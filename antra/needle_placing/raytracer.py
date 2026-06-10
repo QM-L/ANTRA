@@ -1,34 +1,8 @@
 import numpy as np
+
 from antra.segmentation.segmentator import Segmentation
-from totalsegmentator.map_to_binary import class_map
-
-class RayData:
-    '''stores ray traversal data for all segmentation masks.'''
-    def __init__(self, vector: tuple[float], tasks: list[str]):
-        # ordered raydata: [{task: str, tissue: int, length: float}]
-        self.ordered = []
-        self.total_length = 0
-        self.entry_voxel = None
-
-        # per-mask label lengths: {"total": array[128], "body": array[2] ...}
-        self.lengths = {task: np.zeros(len(class_map[task])+1, dtype=np.float32) for task in tasks}
-        self.vector  = vector
-        self.tasks   = tasks
-
-    def accumulate(self, mask_name: str, value: float, length: float) -> None:
-        '''add length to mask's length accumulator.'''
-        # get label and relative(!) alpha from the value
-        label = int(value)
-        frac  = value - label
-        alpha = 1.0 - frac
-        self.lengths[mask_name][label] += length * alpha
-
-        # add total length
-        self.total_length += length
-
-        # add ordered info
-        if self.ordered is None: return
-        self.ordered.append({"task":mask_name,"tissue": label,"length":length,"alpha":alpha})
+from antra.needle_placing.scoring import Scorer
+from antra.needle_placing.ray_data import RayData
 
 class Raytracer():
     '''Raytracing using Amanatides-Woo.'''
@@ -42,8 +16,8 @@ class Raytracer():
         self.segmentations = segmentations
         self.tasks         = list(segmentations.keys())
         self.arrays        = {task: segmentations[task].get_array(np.float32) for task in self.tasks}
-        self.bounds        = {"min":np.array([0,0,0]),"max":np.array(segmentations['total'].dicom.dimensions)}
-        self.voxel_size    = segmentations['total'].dicom.resolution
+        self.bounds        = {"min":np.array([0,0,0]),"max":np.array(segmentations['total'].dicom_dimensions)}
+        self.voxel_size    = segmentations['total'].dicom_resolution
 
         # needle / tumor data
         self.ablation_dist = ablation_center_dist
@@ -61,13 +35,17 @@ class Raytracer():
 
     def analyze_range(self, density: float = 250) -> list[RayData]:
         '''Analyzes paths fairly spread over the specified area. Density in rays / rad^2'''
-        # generate directions
+        # generate rays
         srad = 4*np.pi * (self.theta_range[1]*self.phi_range[1]) / (np.pi**2*2)  
-        directions = self.generate_n_directions(int(density * srad))
-        results = [self.analyze_path(direction) for direction in directions]
-        return directions, results
+        directions, angles = self.generate_n_directions(int(density * srad))
+        rays = [self.analyze_path(direction) for direction in directions]
 
-    def generate_n_directions(self, n: int) -> np.ndarray:
+        # generate and collect scores
+        scorer = Scorer(self.segmentations, self.origin)
+        scores = [{"theta":angles[i][0],"phi":angles[i][1],"scores":scorer.get_scores(ray)} for i,ray in enumerate(rays)]
+        return scores
+
+    def generate_n_directions(self, n: int) -> tuple[np.ndarray,np.ndarray]:
         '''Distribute n points over the allowed range of a sphere.'''
         fractional_range = (self.theta_range[1]) / (np.pi*2) # theta fraction
         total_num_points = int(n / fractional_range)
@@ -90,7 +68,7 @@ class Raytracer():
         x = np.sin(phi) * np.cos(theta)
         y = np.sin(phi) * np.sin(theta)
         z = np.cos(phi)
-        return np.column_stack((x, y, z))
+        return np.column_stack((x, y, z)), np.column_stack((theta, phi))
 
     def is_in_body(self, voxel: np.ndarray) -> bool:
         is_in_bounds  = (np.all(voxel >= self.bounds['min']) and np.all(voxel <  self.bounds['max']))

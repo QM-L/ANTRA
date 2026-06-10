@@ -1,0 +1,26 @@
+QFrame#appHeader {
+    background: #43000000;
+}
+
+QLabel#appTitle {
+    color: white;
+    font-size: 22px;
+    font-weight: bold;
+    padding-left: 10px;
+}
+
+QLabel#appVersion {
+    color: white;
+    padding-left: 10px;
+}
+
+QLabel#sectionTitle {
+    color: white;
+    font-size: 16px;
+    margin-bottom: 6px;
+}
+
+QTextEdit {
+    background: #d9d9d9;
+    color: black;
+}

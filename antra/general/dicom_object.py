@@ -6,7 +6,7 @@ from SimpleITK import Image
 import nibabel as nib
 
 class DICOM_Scan:
-    # small handler for reading and returning the ct scan and it's properties
+    # small reading / dataclass for reading and returning the ct scan and it's properties
 
     def __init__(self, path: str):
         # get image and properties
@@ -17,6 +17,8 @@ class DICOM_Scan:
         self.dimensions = self.image.GetSize()
         self.resolution = self.image.GetSpacing()
         self.id         = self.image_hash()
+
+        print(f'loaded dicom with hash {self.id}.')
 
     def read_DICOM(self, input_path: str) -> Image:
         # read dicom file / files

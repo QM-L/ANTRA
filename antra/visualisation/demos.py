@@ -33,3 +33,8 @@ def demo_3D_visualizer(visualizer: Visualizer):
     plotter = pv.Plotter()
     visualizer.plot_base_scene(plotter)
     plotter.show()
+
+def demo_advice(visualizer: Visualizer, raytracer: Raytracer):
+    plotter = pv.Plotter()
+    visualizer.demo_needle_advisor(plotter, raytracer)
+    plotter.show()

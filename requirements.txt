@@ -4,3 +4,5 @@ nibabel
 SimpleITK
 TotalSegmentator
 torch
+pyside6
+pyvistaqt

@@ -8,6 +8,7 @@ from antra.general.dicom_object import DICOM_Scan
 from antra.segmentation.segmentator import Segmentation
 from antra.needle_placing.scoring import *
 from antra.needle_placing.raytracer import Raytracer
+from antra.needle_placing.needle_advisor import NeedleAdvisor
 from antra.visualisation.tumor_selection import MplContrastHelper
 from antra.general.config import get_label_opacity_maps, load_configs
 
@@ -248,7 +249,86 @@ class Visualizer():
 
         # return state when done
         return state["x"], state["y"], state["z"]
-    
+
+
+    def demo_needle_advisor(self, plotter: pv.Plotter, raytracer: Raytracer, density: float = 250):
+        '''Visualize weighted ray scores and advised needle directions.'''
+
+        # get analysis and advice
+        print("Analyzing rays...")
+        results = raytracer.analyze_range(density)
+        advisor = NeedleAdvisor(self.config, results)
+        advice  = advisor.advise()
+        print(f"Found {len(advice)} viable patch(es)")
+
+        # get point cloud
+        radius  = 100
+        origin  = np.array(raytracer.origin)
+
+        thetas  = np.array([r['theta'] for r in results])
+        phis    = np.array([r['phi']   for r in results])
+        total   = np.array([advisor.weigh_score(r['scores']) for r in results])
+
+        x = np.sin(phis) * np.cos(thetas)
+        y = np.sin(phis) * np.sin(thetas)
+        z = np.cos(phis)
+        pts = np.column_stack([x, y, z]) * radius + origin
+
+        cloud = pv.PolyData(pts)
+        cloud["score"] = total
+        plotter.add_mesh(cloud, scalars="score", cmap="coolwarm",point_size=5, render_points_as_spheres=True, clim=[0, total.max()], show_scalar_bar=True, scalar_bar_args={"title": "Weighted score"})
+
+        # cloud per score
+        cmaps     = ["Reds", "Greens", "Blues", "Purples", "Oranges"]
+        labels    = ["intensity", "skin_angle", "length", "liver_entrance", "ablation"]
+        for i in range(1):
+            sub_scores = np.array([r['scores'][i] for r in results])
+            sub_cloud  = pv.PolyData(pts)
+            sub_cloud["score"] = sub_scores
+            plotter.add_mesh(sub_cloud, scalars="score", cmap=cmaps[i % len(cmaps)],
+                            point_size=3, render_points_as_spheres=True,
+                            show_scalar_bar=False, name=labels[i], opacity=0)
+            # hidden by default — user can toggle via name in PyVista's layer UI
+
+        # sphere
+        sphere = pv.Sphere(radius=radius, center=origin,
+                        theta_resolution=64, phi_resolution=64)
+        plotter.add_mesh(sphere, style="wireframe", opacity=0.1, color="white")
+
+        # advice directions
+        ray_length = radius * 1.3
+        for i, adv in enumerate(advice):
+            t, p  = adv['theta'], adv['phi']
+            d     = np.array([np.sin(p)*np.cos(t), np.sin(p)*np.sin(t), np.cos(p)])
+
+            # arrow from origin outward
+            plotter.add_mesh(
+                pv.Arrow(start=origin, direction=d, scale=ray_length,
+                        shaft_radius=0.01, tip_radius=0.03),
+                color="yellow", name=f"advice_{i}"
+            )
+
+            # label with rank and score
+            plotter.add_point_labels(
+                [origin + d * ray_length],
+                [f"#{i+1}  {adv['score']:.3f}"],
+                font_size=12, text_color="yellow",
+                fill_shape=False, shape_opacity=0,
+            )
+
+        # scene
+        plotter.add_mesh(pv.PolyData([origin]), point_size=12,
+                        render_points_as_spheres=True, color="red")
+
+        opacity = [0,0,0,0,0,0,0.03,0.03,0.03,0.03,0.03,0.03]
+        plotter.add_volume(self.volume, scalars="CT", cmap="bone", opacity=opacity)
+        if self.seg is not None:
+            self.plot_segmentation(plotter)
+
+        plotter.add_axes()
+        plotter.show()
+
+
     def graph_attenuation(self, raytracer: Raytracer):
         '''Graphs attenuation from start of ray to end'''
         # setup plotter and ax

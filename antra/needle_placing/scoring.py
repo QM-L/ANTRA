@@ -2,7 +2,7 @@ import numpy as np
 from scipy.ndimage import gaussian_filter, label
 
 from antra.segmentation.segmentator import Segmentation
-from antra.needle_placing.raytracer import RayData
+from antra.needle_placing.ray_data import RayData
 from antra.general import config
 
 '''functions pertaining to ray score calculation'''
@@ -33,8 +33,8 @@ class Scorer():
             ablation_scorer.get_score
             ]
 
-    def get_score(self, ray_data: RayData) -> float:
-        return np.prod([func(ray_data)**self.weights[i] for i,func in enumerate(self.scoring_functions)])
+    def get_scores(self, ray_data: RayData) -> tuple[float]:
+        return [func(ray_data) for func in self.scoring_functions]
 
     ### Scoring functions 
 
@@ -91,7 +91,7 @@ class Scorer():
     def compute_body_gradient(self, segmentations: dict[str, Segmentation]) -> np.ndarray:
         # load body array, smooth to make directions more correct
         body_array = np.asarray(segmentations['body'].raw_mask.dataobj, dtype=np.float32)
-        voxel_size = segmentations['body'].dicom.resolution
+        voxel_size = segmentations['body'].dicom_resolution
         smoothed   = gaussian_filter(body_array, sigma=[2/voxel_size[0], 2/voxel_size[1], 2/voxel_size[2]])
 
         # turn into gradient
@@ -115,7 +115,7 @@ class AblationScorer():
         seg                  = segmentations['liver_vessels']
         self.seg_array       = np.asarray(seg.raw_mask.dataobj, dtype=np.uint8)
         self.tumor_label     = 2
-        self.resolution = np.array(seg.dicom.resolution)
+        self.resolution = np.array(seg.dicom_resolution)
         self.tumor_points    = self.get_tumor_points(seg)
 
         # margin

@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import numpy as np
 from scipy.ndimage import binary_dilation, find_objects
@@ -10,34 +11,56 @@ from antra.general import config
 
 class Segmentation():
     '''Creates a mask of a specified segmentation'''
-    def __init__(self, dicom, task: str):
-        self.dicom = dicom
+    def __init__(self, dicom = None, task: str = "total", folder: str = None):
         self.task = task
-
-        # generate mask
-        self._window_cache = {}
         self.config = config.load_configs()
+        self._window_cache = {}
         self.margins = self.config.items(section='margins')
-        self.mask = self.generate_mask()
+
+        # load data
+        if dicom and folder:
+            self.dicom_resolution = dicom.resolution
+            self.dicom_dimensions = dicom.dimensions
+            self.mask = self.generate_mask(dicom, folder)
+        elif dicom == None and folder: self.mask, self.dicom_resolution, self.dicom_dimensions = self.load_mask(folder)
+        else: raise(ValueError("no dicom or folder specified for segmentation"))
+        
         self.raw_mask = self.floored_mask()
 
-    def generate_mask(self) -> nib.Nifti1Image:
+    def generate_mask(self, dicom, folder_name) -> nib.Nifti1Image:
         '''generates a segmentation and exports it to data folder.
         if the mask already exists, uses that.'''
 
         # generate file name and location
-        filename = f'mask_{self.task}.nii.gz'
-        file_path = Path(__file__).parent.parent.parent / f'data/{self.dicom.id}/{filename}'
+        folder    = Path(__file__).parent.parent.parent / f'data/{folder_name}'
+        file_path = folder / f'mask_{self.task}.nii.gz'
+        meta_path = folder / f'dicom_data.json'
 
-        # load existing file
-        if file_path.exists(): return self.ensure_lps(nib.load(file_path))
-
-        # generate if non-existant
+        # generate
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        raw_image = totalsegmentator(input=self.dicom.path, task=self.task, output=None, ml=False)
+        raw_image = totalsegmentator(input=dicom.path, task=self.task, output=None, ml=False)
         processed_image = self.apply_margins(self.ensure_lps((raw_image)))
         nib.save(processed_image, file_path.absolute())
+
+        # json saved
+        with open(meta_path, 'w') as f:
+            json.dump({"resolution": list(self.dicom_resolution), "dimensions": list(self.dicom_dimensions)}, f, indent=2)
+        
         return processed_image
+    
+    def load_mask(self, folder: str) -> tuple[nib.Nifti1Image, np.ndarray, np.ndarray]:
+        '''Load mask and dicom properties from a folder.'''
+        folder    = Path(folder)
+        mask_path = folder / f'mask_{self.task}.nii.gz'
+        meta_path = folder / f'dicom_data.json'
+
+        if not mask_path.exists() or not meta_path.exists():
+            raise FileNotFoundError( f"No full segmentation data found in {folder}, rerun the segmentation.")
+
+        with open(meta_path) as f:
+            meta = json.load(f)
+
+        return (nib.load(mask_path), np.array(meta['resolution']), np.array(meta['dimensions']))
 
     def ensure_lps(self, mask: nib.Nifti1Image) -> nib.Nifti1Image:
         '''converts image to LPS orientation'''

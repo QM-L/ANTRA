@@ -1,4 +1,3 @@
-import argparse
 import numpy as np
 from antra.general import config
 from antra.general.dicom_object import DICOM_Scan
@@ -6,10 +5,13 @@ from antra.segmentation.segmentator import Segmentation
 from antra.visualisation.visualizer import Visualizer
 from antra.needle_placing.raytracer import Raytracer
 from antra.visualisation import demos
+from antra.interface.window import run_application
+from antra.interface.logic import LogicHandler
 
-DEFAULT_DICOM = 'PATIENT_DICOM'
+DEFAULT_DICOM = 'PATIENT_DICOM_1'
+SEG_MODE = False
 
-def load_objects(dicom_path):
+def load_objects(dicom_path) -> tuple[DICOM_Scan, Segmentation, Visualizer, Raytracer]:
     # load config
     config_data = config.load_configs()
 
@@ -33,7 +35,6 @@ def demo_raytrace(vis, ray):
     # raycast high amount of angles test
     ray.set_theta_range(0, 2*np.pi)
     ray.set_phi_range(0.2*np.pi, 0.8*np.pi)
-    #demos.demo_circle(vis, ray)
     demos.demo_rendertime(vis, ray)
 
 def demo_circle(vis, ray):
@@ -49,18 +50,12 @@ def demo_tumor_selection(img, vis, ray):
     ray.set_origin(x, y, z)
 
 if __name__ == "__main__":
-    # parse arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-dicom", type=str, default=DEFAULT_DICOM, required=False)
-    args = parser.parse_args()
-    dicom_path = f'scans/{args.dicom}'
-
-    # load
-    img, seg, vis, ray = load_objects(dicom_path)
-    ray.set_origin(339*img.resolution[0], 228*img.resolution[1], 109*img.resolution[2]) # default for dicom 2
+    if SEG_MODE:
+        print("scanning dicom...")
+        dicom = DICOM_Scan("scans/"+DEFAULT_DICOM)
+        folder = "Segmentation_A"
+        print("starting segmentations")
+        segmentations = {task: Segmentation(dicom, task, folder) for task in ['liver_vessels', 'total', 'body']}
+        print("done")
     
-    # demos
-    demo_tumor_selection(img, vis, ray)
-    print('raytracing...')
-    demo_raytrace(vis, ray)
-    
+    run_application()
