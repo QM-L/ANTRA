@@ -1,5 +1,11 @@
-from PySide6.QtWidgets import QLabel, QWidget, QVBoxLayout, QHBoxLayout, QFrame, QPushButton, QTextEdit
+import numpy as np
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+
+from superqt import QRangeSlider
+from PySide6.QtWidgets import QLabel, QWidget, QVBoxLayout, QHBoxLayout, QFrame, QPushButton, QTextEdit, QSlider
 from PySide6.QtCore import Signal, Qt
+
+from antra.visualisation.visualizer import Visualizer
 
 '''Custom elements'''
 
@@ -20,6 +26,7 @@ class SectionFrame(QFrame):
     
     def add_space(self, spacing: int):
         self.content_layout.addSpacing(spacing)
+
 
 class HeaderBar(QFrame):
     setup_clicked = Signal()
@@ -59,6 +66,7 @@ class HeaderBar(QFrame):
     def unlock_advice(self):
         self.advice_btn.setEnabled(True)
 
+
 class LogPanel(SectionFrame):
     def __init__(self):
         super().__init__(False, False)
@@ -69,3 +77,145 @@ class LogPanel(SectionFrame):
     
     def write(self, text):
         self.console.append(text)
+
+
+class DicomSliceWidget(QWidget):
+    '''DICOM viewer, update(visualizer) populates it after data is loaded.'''
+
+    def __init__(self, selection=False, parent=None):
+        super().__init__(parent)
+        self.select_active = selection
+        self.box = QVBoxLayout(self)
+        self.box.setContentsMargins(0, 0, 0, 0)
+        self.canvas = None
+        self.state  = None
+
+    def update(self, visualizer: Visualizer) -> None:
+        '''Build or rebuild the slice figure from a loaded Visualizer.'''
+        # remove old canvas if present
+        if self.canvas is not None:
+            self.box.removeWidget(self.canvas)
+            self.canvas.setParent(self)
+
+        fig, self.state = visualizer.build_slice_figure(self.select_active)
+
+        self.canvas = FigureCanvasQTAgg(fig)
+        self.box.addWidget(self.canvas)
+    
+    def toggle_segmentations(self):
+        '''Toggles whether segmentations are visible on the plot'''
+
+
+    def selected_voxel(self) -> tuple[int, int, int] | None:
+        '''Returns the currently selected (x, y, z) voxel, or None if not loaded.'''
+        if self.state is None: return None
+        return self.state['x'], self.state['y'], self.state['z']
+
+class ValueRow(QWidget):
+    '''singular status label.'''
+    def __init__(self, key: str, initial_value: str = "", parent=None, editable=False):
+        super().__init__(parent)
+
+        # Main horizontal layout
+        layout = QHBoxLayout(self)
+
+        # Key Label (Styled to be muted/secondary)
+        self.key_label = QLabel(key)
+        self.key_label.setStyleSheet("font-weight: bold;")
+
+        # Value Label (Styled to stand out)
+        self.value_label = QLabel(str(initial_value))
+        self.value_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+
+        layout.addWidget(self.key_label)
+        layout.addStretch()
+        layout.addWidget(self.value_label)
+
+    def set_value(self, value):
+        self.value_label.setText(str(value))
+
+class ValuePanel(QFrame):
+    ''''Column of status labels that can be updated with a dict.'''
+    def __init__(self, title: str =None, parent=None):
+        super().__init__(parent)
+        self.rows = {}
+
+        self.main_layout = QVBoxLayout(self)
+        self.title = QLabel(title)
+        self.title.setStyleSheet("font-weight: bold;")
+        self.main_layout.addWidget(self.title)
+    
+    def update_data(self, data: dict):
+        '''update data and rows'''
+        for key, value in data.items():
+            # update already existing data
+            if key in self.rows:
+                self.rows[key].set_value(value)
+            # append new one
+            else:
+                row_widget = ValueRow(key, value, self)
+                self.main_layout.addWidget(row_widget)
+                self.rows[key] = row_widget
+
+class ValueSlider(QWidget):
+    ''''Slider with a label next to it that shows the value.'''
+    def __init__(self, init_min: int, init_max: int, init_value: int, suffix: str = ""):
+        super().__init__()
+
+        # widgets
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setMinimum(init_min)
+        self.slider.setMaximum(init_max)
+        self.slider.setValue(init_value)
+        self.slider.setTickInterval(50)
+        self.label = QLabel(str(init_value)+suffix)
+
+        self.slider.valueChanged.connect(lambda v: self.label.setText(str(v)+suffix))
+
+        # arrange
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0,0,0,0)
+        layout.addWidget(self.slider)
+        layout.addWidget(self.label)
+        self.setLayout(layout)
+
+class RangeSlider(QWidget):
+    '''the sliders that change the range of the raycasting'''
+    changed = Signal()
+
+    def __init__(self, init_min: int, init_max: int, init_value: tuple[int, int], suffix: str = ""):
+        super().__init__()
+        self.suffix = suffix
+
+        # widgets
+        self.slider = QRangeSlider(Qt.Horizontal)
+        self.slider.setRange(init_min, init_max)
+        self.slider.setValue(init_value)
+        self.slider.setTickInterval(50)
+        self.label = QLabel(f"{init_value[0]}-{init_value[1]}{self.suffix}")
+
+        self.slider.valueChanged.connect(self.on_changed)
+
+        # arrange
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0,0,0,0)
+        layout.addWidget(self.slider)
+        layout.addWidget(self.label)
+        self.setLayout(layout)
+
+    def on_changed(self, val: tuple[int,int]):
+        self.label.setText(f"{val[0]}-{val[1]}{self.suffix}")
+        self.changed.emit()
+
+    def get_radians(self) -> tuple[float, float]:
+        range_deg = self.slider.value()
+        return np.radians(range_deg[0]), np.radians(range_deg[1])
+
+class WeightsPanel(QFrame):
+    ''''Allows user to change weights.'''
+    def __init__(self):
+        super().__init__()
+        self.weights = {}
+        self.main_layout = QVBoxLayout(self)
+
+        # should use editable version of ValueRows.

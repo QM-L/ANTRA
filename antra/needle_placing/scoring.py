@@ -91,7 +91,7 @@ class Scorer():
     def compute_body_gradient(self, segmentations: dict[str, Segmentation]) -> np.ndarray:
         # load body array, smooth to make directions more correct
         body_array = np.asarray(segmentations['body'].raw_mask.dataobj, dtype=np.float32)
-        voxel_size = segmentations['body'].dicom_resolution
+        voxel_size = segmentations['body'].dicom.resolution
         smoothed   = gaussian_filter(body_array, sigma=[2/voxel_size[0], 2/voxel_size[1], 2/voxel_size[2]])
 
         # turn into gradient
@@ -112,15 +112,15 @@ class AblationScorer():
         self.radius_zm = self.radius_z - margin
 
         # tumor mask array 
-        seg                  = segmentations['liver_vessels']
-        self.seg_array       = np.asarray(seg.raw_mask.dataobj, dtype=np.uint8)
-        self.tumor_label     = 2
-        self.resolution = np.array(seg.dicom_resolution)
-        self.tumor_points    = self.get_tumor_points(seg)
+        seg               = segmentations['liver_vessels']
+        self.seg_array    = np.asarray(seg.raw_mask.dataobj, dtype=np.uint8)
+        self.tumor_label  = 2
+        self.resolution   = np.array(seg.dicom.resolution)
+        self.tumor_points = TumorAnalyzer(segmentations).nearest_tumor_points(ablation_origin)
 
         # margin
-        tumor_radius      = np.linalg.norm(self.tumor_points, axis=1).max()
-        self.max_margin   = min(self.radius_r, self.radius_z) - tumor_radius
+        tumor_radius    = np.linalg.norm(self.tumor_points, axis=1).max()
+        self.max_margin = min(self.radius_r, self.radius_z) - tumor_radius
 
     def get_score(self, ray: RayData) -> float:
         '''Score this specific ray's angle'''
@@ -148,23 +148,57 @@ class AblationScorer():
 
         return np.column_stack([x, y, z])
 
-    def get_tumor_points(self, seg) -> np.ndarray:
-        '''returns coordinates (mm) of points in the tumor closest to origin.'''
-        # get mask where each separate tumor has it's own label
-        raw   = np.asarray(seg.raw_mask.dataobj, dtype=np.uint8)
-        labelled, n = label(raw == self.tumor_label)
-        
-        # loop over each voxel and find label closest to origin
-        best_voxels = None
-        best_dist   = np.inf
-        for i in range(1, n + 1):
+class TumorAnalyzer():
+    ''''Seperate class which analyzes tumors in the segmentation for info. used during selection to give user info.'''
+    TUMOR_LABEL = 2
+    TUMOR_TASK = "liver_vessels"
+
+    def __init__(self, segmentations: dict[str, Segmentation]):
+        seg = segmentations[self.TUMOR_TASK]
+        raw = np.asarray(seg.raw_mask.dataobj, dtype=np.uint8)
+        self.resolution = np.array(seg.dicom.resolution, dtype=float)
+
+        # label each connected tumor region separately
+        labelled, self.count = label(raw == self.TUMOR_LABEL)
+
+        # pre-compute mm coordinates and centroid for every tumor
+        self.tumors = []
+        for i in range(1, self.count + 1):
             voxels = np.argwhere(labelled == i).astype(float)
             mm = voxels * self.resolution
-            dist = np.linalg.norm(mm.mean(axis=0) - self.origin)
+            centroid = mm.mean(axis=0)
+            self.tumors.append({"mm": mm, "center": centroid})
 
-            if dist >= best_dist: continue
-            best_dist   = dist
-            best_voxels = mm
+    def stats_for_origin(self, origin_vox: np.ndarray) -> dict:
+        '''returns stats for the tumor nearest to origin_mm.'''
+        if self.count == 0: return {"nearest": None, "size_mm": 0.0, "max_radius_mm": 0.0}
+        origin_mm = np.array(origin_vox) * self.resolution
+        origin = np.array(origin_mm, dtype=float)
 
-        if best_voxels is None: raise ValueError(f"No tumor voxels found")
-        return best_voxels - self.origin
+        # find nearest tumor by centroid distance
+        nearest = min(self.tumors, key=lambda t: np.linalg.norm(t["center"] - origin))
+        pts = nearest["mm"]
+
+        # max radius from center and volume
+        center = nearest["center"]
+        max_diameter = np.linalg.norm(pts - center, axis=1).max() * 2
+        volume_mm3 = len(pts) * np.prod(self.resolution)
+
+        # distance from center
+        distance = np.linalg.norm(center - origin_mm)
+
+        return {
+            "# tumors": self.count,
+            "current pos (mm)": np.round(origin_mm,1),
+            "nearest tumor (mm)": np.round(center, 1),
+            "dist from center (mm)": round(distance, 1),
+            "volume (mm³)": round(float(volume_mm3)),
+            "max radius (mm)": round(float(max_diameter), 1)
+        }
+
+    def nearest_tumor_points(self, origin_mm: np.ndarray) -> np.ndarray:
+        '''returns mm coordinates of the nearest tumor's voxels, relative to origin.'''
+        if self.count == 0: raise ValueError("No tumor voxels found")
+        origin = np.array(origin_mm, dtype=float)
+        nearest = min(self.tumors, key=lambda t: np.linalg.norm(t["center"] - origin))
+        return nearest["mm"] - origin

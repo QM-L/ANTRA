@@ -15,7 +15,8 @@ class SegmentationWorker(QObject):
     def run(self):
         try:
             result = {}
-            for task in self.tasks:
+            for task in ["body"]:
+            #for task in self.tasks:
                 self.notice.emit(f"trying to create seg [{task}] into {self.folder}")
                 result[task] = Segmentation(dicom=self.dicom, task=task, folder=self.folder)
             self.finished.emit(result)

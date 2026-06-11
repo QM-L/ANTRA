@@ -16,8 +16,8 @@ class Raytracer():
         self.segmentations = segmentations
         self.tasks         = list(segmentations.keys())
         self.arrays        = {task: segmentations[task].get_array(np.float32) for task in self.tasks}
-        self.bounds        = {"min":np.array([0,0,0]),"max":np.array(segmentations['total'].dicom_dimensions)}
-        self.voxel_size    = segmentations['total'].dicom_resolution
+        self.bounds        = {"min":np.array([0,0,0]),"max":np.array(segmentations['total'].dicom.dimensions)}
+        self.voxel_size    = segmentations['total'].dicom.resolution
 
         # needle / tumor data
         self.ablation_dist = ablation_center_dist
@@ -33,17 +33,20 @@ class Raytracer():
     def set_phi_range(self, lower: float, upper: float) -> None:
         self.phi_range = [lower, upper - lower]
 
-    def analyze_range(self, density: float = 250) -> list[RayData]:
+    def get_area(self):
+        '''returns the current area in the selected range in srad²'''
+        return 4*np.pi * (self.theta_range[1]*self.phi_range[1]) / (np.pi**2*2)  
+
+    def analyze_range(self, density: float = 250) -> tuple[list[RayData],list[dict]]:
         '''Analyzes paths fairly spread over the specified area. Density in rays / rad^2'''
         # generate rays
-        srad = 4*np.pi * (self.theta_range[1]*self.phi_range[1]) / (np.pi**2*2)  
-        directions, angles = self.generate_n_directions(int(density * srad))
+        directions, angles = self.generate_n_directions(int(density * self.get_area()))
         rays = [self.analyze_path(direction) for direction in directions]
 
         # generate and collect scores
         scorer = Scorer(self.segmentations, self.origin)
-        scores = [{"theta":angles[i][0],"phi":angles[i][1],"scores":scorer.get_scores(ray)} for i,ray in enumerate(rays)]
-        return scores
+        scores = [{"length": ray.total_length, "dir": ray.vector, "theta":angles[i][0],"phi":angles[i][1],"scores":scorer.get_scores(ray)} for i,ray in enumerate(rays)]
+        return rays, scores
 
     def generate_n_directions(self, n: int) -> tuple[np.ndarray,np.ndarray]:
         '''Distribute n points over the allowed range of a sphere.'''
