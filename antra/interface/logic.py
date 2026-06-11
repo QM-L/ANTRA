@@ -1,3 +1,4 @@
+import copy
 from pathlib import Path
 from datetime import datetime
 import numpy as np
@@ -6,7 +7,7 @@ from PySide6.QtCore import QObject, Signal, QThread
 
 from antra.general.dicom_object import DICOM_Scan
 from antra.general.state import State
-from antra.needle_placing.scoring import TumorAnalyzer
+from antra.needle_placing.scoring import TumorAnalyzer, weigh_score
 from antra.needle_placing.raytracer import Raytracer
 from antra.needle_placing.needle_advisor import NeedleAdvisor
 from antra.segmentation.segmentator import Segmentation
@@ -85,20 +86,29 @@ class LogicHandler(QObject):
 
     def run_raytracing(self, theta_range: tuple[float, float], phi_range: tuple[float, float], density: int, max_results: int) -> None:
         '''Runs raytracing and NeedleAdvisor, stores results in state.'''
-        config  = self.state.config
-        origin  = self.state.origin
-
         # ablation_center_dist: how far the needle tip extends past the origin
-        ablation_dist = config.getint('needle', 'ablation_center_dist')
+        ablation_dist = self.state.config.getint('needle', 'ablation_center_dist')
 
         raytracer = Raytracer(ablation_dist, self.state.segmentations)
-        raytracer.set_origin(*origin)
+        raytracer.set_origin(*self.state.origin)
         raytracer.set_theta_range(*theta_range)
         raytracer.set_phi_range(*phi_range)
 
         print(f"Raytracing {density} rays/srad² over θ={np.degrees(theta_range)}° and φ={np.degrees(phi_range)}°...")
 
-        results = raytracer.analyze_range(density)
-        self.state.raytrace_results = results
+        rays, results = raytracer.analyze_range(density)
+        self.state.score_data = results
         
         self.raytracing_done.emit()
+    
+    def store_weighted_scores(self):
+        '''stores weighted scores to state'''
+        weighted_scores = copy.deepcopy(self.state.score_data)
+        for datapoint in weighted_scores:
+            datapoint["weighted_score"] = weigh_score(datapoint["scores"], self.state.weights)
+        self.state.weighted_scores = weighted_scores
+    
+    def get_needle_advice(self):
+        advice = NeedleAdvisor(self.state.config, self.state.weighted_scores).advise()
+        print(f"Found {len(advice)} viable path(s)")
+        return advice

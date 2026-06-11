@@ -7,6 +7,14 @@ from antra.general import config
 
 '''functions pertaining to ray score calculation'''
 
+SCORER_NAMES = ["Intensity", "Skin Angle", "Needle Length", "Liver Entrance","Ablation Coverage"]
+
+
+def weigh_score(scores: list, weights: list) -> list:
+    '''Compiles scorer scores into weighted scores'''
+    return np.prod([score**weights[i] for i, score in enumerate(scores)])
+
+
 class Scorer():
     '''Handles scoring a single path based on specified path scoring.'''
     def __init__(self, segmentations: dict[str, Segmentation], origin: tuple[float,float,float]):

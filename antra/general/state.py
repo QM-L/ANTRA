@@ -6,18 +6,24 @@ class State():
     def __init__(self):
         # general
         self.page = "setup"
+        self.config = load_configs()
 
         # setup
         self.dicom = None
         self.segmentations = None
-        self.config = load_configs()
-        
+        self.visualizer = None
+
         # selection
         self.origin = None
         self.tumor_analyzer = None
 
-        # advice
+        # raytracing
         self.raytracer = None
-        self.raytrace_results = None
+        self.score_data = None
+
+        # weighing
+        self.weights = self.config.gettuple("scoring","weights")
+        self.weighted_scores = None
+
+        # advice
         self.advice = None
-        self.config = load_configs()

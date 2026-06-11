@@ -61,7 +61,7 @@ class ControlsPanel(QStackedWidget):
         frame.add_widget(self.theta_slider)
 
         frame.add_widget(QLabel("Phi range (elevation):"))
-        self.phi_slider = RangeSlider(0, 360, (25, 155), "°")
+        self.phi_slider = RangeSlider(0, 180, (25, 155), "°")
         frame.add_widget(self.phi_slider)
 
         # density & max needles

@@ -5,20 +5,13 @@ from scipy.ndimage import distance_transform_edt, label
 from skimage.measure import regionprops
 
 class NeedleAdvisor():
-    '''Collector for unmodified ray scores, stores all methods for
-       advising of needle directions.'''
+    '''Actually goes through the scores and finds the best needle path'''
 
-    def __init__(self, config, ray_results: list[dict]):
+    def __init__(self, config, weighted_scores: list[dict]):
         # load relevant config values
-        self.weights   = config.gettuple('scoring', 'weights')
         self.threshold = config.getfloat('scoring', 'score_threshold')
         self.min_patch_size = config.getint('scoring', 'min_patch_size')
-        self.results   = ray_results
-
-    def change_weight(self, index: int, new_weight: float) -> None:
-        '''Change a weight'''
-        if len(self.weights) <= index: return 
-        self.weights[index] = new_weight
+        self.results = weighted_scores
 
     def advise(self) -> list[dict]:
         '''turns list of {"theta", "phi", "scores"} for each ray
@@ -27,7 +20,7 @@ class NeedleAdvisor():
         # generate grid with the weighted scores
         t = np.array([r['theta'] for r in self.results])
         p = np.array([r['phi']   for r in self.results])
-        total  = np.array([self.weigh_score(r['scores']) for r in self.results])
+        total  = np.array([r['weighted_score'] for r in self.results])
 
         # score a finer coordinate space with interpolation
         res    = 500
@@ -51,10 +44,6 @@ class NeedleAdvisor():
             advice.append({"theta": float(thetas[center[1]]),"phi": float(phis[center[0]]),"score": float(grid_scores[center])})
 
         return sorted(advice, key=lambda a: a["score"], reverse=True)
-
-    def weigh_score(self, scores: list) -> list:
-        '''Compiles scorer scores into weighted scores'''
-        return np.prod([score**self.weights[i] for i, score in enumerate(scores)])
 
     def get_region_center(self, region, labelled_array):
         # each coordinate is valued with distance from edge

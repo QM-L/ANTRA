@@ -34,10 +34,12 @@ class Visualizer():
 
     def plot_base_scene(self, plotter: pv.Plotter):
         ''''Plots the body and it's insides.'''
-        self.plot_segmentation(plotter, 'total', cmap='Reds', opacity=0.5)
-        self.plot_segmentation(plotter, 'body',  cmap='Grays', opacity=0.15)
-        self.plot_segmentation(plotter, 'liver_vessels', cmap='Blues', opacity=0.9)
+        actors = []
+        actors.append(self.plot_segmentation(plotter, 'total', cmap='Reds', opacity=0.5))
+        actors.append(self.plot_segmentation(plotter, 'body',  cmap='Grays', opacity=0.15))
+        actors.append(self.plot_segmentation(plotter, 'liver_vessels', cmap='Blues', opacity=0.9))
         plotter.reset_camera()
+        return actors
 
     def plot_ablation_zone(self, plotter: pv.Plotter):
         '''plots the ablation zone centered around origin'''
@@ -184,7 +186,8 @@ class Visualizer():
 
         cloud = pv.PolyData(points)
         self._range_actor = plotter.add_mesh(cloud, color='dodgerblue', opacity=1, point_size=4, render_points_as_spheres=True, name='range_preview')
-        plotter.render() 
+        plotter.render()
+        return self._range_actor
 
     def visualize_body_scoring(self, plotter: pv.Plotter, origin: list[float], score_data: list[dict], weights: list[float]):
         '''Color the body surface mesh by ray scores from the origin.'''
@@ -198,19 +201,21 @@ class Visualizer():
         body_mesh = vol.threshold(0.5).extract_surface(algorithm='dataset_surface').smooth(n_iter=100, relaxation_factor=0.05)
 
         # get scores and corresponding points
-        raw_scores = [data["scores"] for data in score_data]
-        directions = [data["dir"] for data in score_data]
-        lengths = [data["length"] for data in score_data]
+        ablation_center_dist = self.config.getfloat("needle", "ablation_center_dist")
+        raw_scores = np.array([data["scores"] for data in score_data])
+        directions = np.array([data["dir"] for data in score_data])
+        lengths = np.array([data["length"] - ablation_center_dist for data in score_data])
         scores = np.prod(raw_scores ** np.array(weights), axis=1)
-        points = directions * lengths + origin
+        points = directions * lengths[:, np.newaxis] + np.array(origin)
 
         # Build a point cloud with score scalars
         cloud = pv.PolyData(points)
         cloud["score"] = np.array(scores)
         body_mesh = body_mesh.interpolate(cloud, radius=5)
-                
+        
         # plot
-        plotter.add_mesh(body_mesh, scalars="score", cmap="Oranges", log_scale=False, show_scalar_bar=True)
+        actor = plotter.add_mesh(body_mesh, scalars="score", cmap="Oranges", log_scale=False, show_scalar_bar=True, scalar_bar_args={"color":"white"})
+        return actor
 
     def demo_needle_advisor(self, plotter: pv.Plotter, origin: list[float], score_data: list[dict], weights: list[float]):
         '''Visualize weighted ray scores and advised needle directions. only called after finalizing weights'''

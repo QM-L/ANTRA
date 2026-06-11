@@ -68,11 +68,14 @@ class SetupPage(SectionFrame):
         return self.dicom_widget.selected_voxel()
 
     def cleanup(self):
-        self.seg_plotter.close()
-        self.ablation_plotter.close()
+        self.seg_plotter.clear()
+        self.ablation_plotter.clear()
+        self.visualizer = None
 
     def closeEvent(self, event):
         self.cleanup()
+        self.seg_plotter.close()
+        self.ablation_plotter.close()
         super().closeEvent(event)
 
 
@@ -121,71 +124,75 @@ class AdvicePage(SectionFrame):
         self.plotter.set_background("#1a1a1a")
         self.add_widget(self.plotter)
 
-        self.visualizer    = None
-        self._range_actor   = None   # blue range preview point cloud
-        self._scoring_actor = None   # body scoring mesh actor
-        self._arrow_actors  = []     # advice arrow actors
+        self.visualizer = None
         self._showing_scores = True
+        self._seg_actors = None       # segmentation mesh
+        self._range_actor = None     # blue range preview point cloud
+        self._scoring_actor = None   # body scoring mesh actor
+        self._arrow_actors = []      # advice arrow actors
 
     ### Range Preview
 
     def setup(self, visualizer: Visualizer) -> None:
         '''Initial setup: render base scene and show default range preview.'''
         self.visualizer = visualizer
-        visualizer.plot_base_scene(self.plotter)
+        self._seg_actors = visualizer.plot_base_scene(self.plotter)
         self.plotter.reset_camera()
         self.plotter.render()
 
     def update_range_preview(self, raytracer, density) -> None:
         '''Highlight the currently selected angular range as a blue point cloud
            projected onto the body surface at a fixed radius.'''
-        self.visualizer.update_range_preview(self.plotter, raytracer, density)
+        self._range_actor = self.visualizer.update_range_preview(self.plotter, raytracer, density)
 
     ### scoring / advice results
 
-    def show_results(self, visualizer: Visualizer, raytracer, advice: list[dict],
-                     max_results: int) -> None:
+    def clear_range_actors(self):
+        '''Remove the range actors if exists'''
+        if self._seg_actors is not None:
+            for actor in self._seg_actors:
+                self.plotter.remove_actor(actor)
+            self._seg_actor = None
+        if self._range_actor is not None:
+            self.plotter.remove_actor(self._range_actor)
+            self._range_actor = None
+
+    def show_scoring(self, visualizer: Visualizer, origin: list[float], score_data: list[dict], weights: list[float]) -> None:
         '''Switch to results mode: scoring mesh + top N advice arrows.'''
-        # clear range preview
+        # clear range actors
+        self.clear_range_actors()
+
+        # clear previous if exists
         if self._range_actor is not None:
             self.plotter.remove_actor(self._range_actor)
             self._range_actor = None
 
         # body scoring mesh
-        self._scoring_actor = visualizer.visualize_body_scoring(
-            self.plotter, raytracer)
+        self._scoring_actor = visualizer.visualize_body_scoring(self.plotter, origin, score_data, weights)
+        self.plotter.render()
 
-        # draw top N advice arrows
-        self._draw_advice_arrows(advice[:max_results], raytracer.origin)
-        self.plotter.reset_camera()
+    def show_advice(self, advice, origin, max_results):
+        self._draw_advice_arrows(advice[:max_results], origin)
         self.plotter.render()
 
     def _draw_advice_arrows(self, advice: list[dict], origin) -> None:
         '''Render an arrow + label for each advice entry.'''
+        # TODO: Move to visualizer
         # remove old arrows
         for actor in self._arrow_actors:
             self.plotter.remove_actor(actor)
         self._arrow_actors = []
 
-        origin     = np.array(origin, dtype=float)
+        origin = np.array(origin, dtype=float)
         ray_length = 120.0
 
         for i, adv in enumerate(advice):
             t, p = adv['theta'], adv['phi']
-            d    = np.array([np.sin(p) * np.cos(t),np.sin(p) * np.sin(t), np.cos(p)])
-            arrow = pv.Arrow(
-                start=origin, direction=d, scale=ray_length,
-                shaft_radius=0.008, tip_radius=0.025
-            )
+            d = np.array([np.sin(p) * np.cos(t),np.sin(p) * np.sin(t), np.cos(p)])
+            arrow = pv.Arrow(start=origin, direction=d, scale=ray_length,shaft_radius=0.008, tip_radius=0.025)
             actor = self.plotter.add_mesh(arrow, color='yellow', name=f'advice_{i}')
             self._arrow_actors.append(actor)
-
-            self.plotter.add_point_labels(
-                [origin + d * ray_length],
-                [f"#{i+1}  {adv['score']:.3f}"],
-                font_size=12, text_color='yellow',
-                fill_shape=False, shape_opacity=0,
-            )
+            self.plotter.add_point_labels( [origin + d * ray_length],[f"#{i+1}  {adv['score']:.3f}"],font_size=12, text_color='yellow',fill_shape=False, shape_opacity=0)
 
     def highlight_advice(self, index: int, advice: list[dict], origin) -> None:
         '''Redraw arrows with the selected one highlighted in a different color.'''
@@ -193,15 +200,14 @@ class AdvicePage(SectionFrame):
             self.plotter.remove_actor(actor)
         self._arrow_actors = []
 
-        origin     = np.array(origin, dtype=float)
+        origin = np.array(origin, dtype=float)
         ray_length = 120.0
 
         for i, adv in enumerate(advice):
             t, p  = adv['theta'], adv['phi']
-            d     = np.array([np.sin(p)*np.cos(t), np.sin(p)*np.sin(t), np.cos(p)])
+            d = np.array([np.sin(p)*np.cos(t), np.sin(p)*np.sin(t), np.cos(p)])
             color = 'cyan' if i == index else 'yellow'
-            arrow = pv.Arrow(start=origin, direction=d, scale=ray_length,
-                             shaft_radius=0.008, tip_radius=0.025)
+            arrow = pv.Arrow(start=origin, direction=d, scale=ray_length, shaft_radius=0.008, tip_radius=0.025)
             actor = self.plotter.add_mesh(arrow, color=color, name=f'advice_{i}')
             self._arrow_actors.append(actor)
 

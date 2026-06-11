@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QLabel, QWidget, QVBoxLayout, QHBoxLayout, QFrame,
 from PySide6.QtCore import Signal, Qt
 
 from antra.visualisation.visualizer import Visualizer
+from antra.needle_placing.scoring import SCORER_NAMES
 
 '''Custom elements'''
 
@@ -159,10 +160,11 @@ class ValuePanel(QFrame):
 
 class ValueSlider(QWidget):
     ''''Slider with a label next to it that shows the value.'''
-    def __init__(self, init_min: int, init_max: int, init_value: int, suffix: str = ""):
+    def __init__(self, init_min: int, init_max: int, init_value: int, suffix: str = "", label=None):
         super().__init__()
 
         # widgets
+        self.name = QLabel(label)
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setMinimum(init_min)
         self.slider.setMaximum(init_max)
@@ -175,6 +177,7 @@ class ValueSlider(QWidget):
         # arrange
         layout = QHBoxLayout()
         layout.setContentsMargins(0,0,0,0)
+        if label: layout.addWidget(self.name)
         layout.addWidget(self.slider)
         layout.addWidget(self.label)
         self.setLayout(layout)
@@ -212,10 +215,30 @@ class RangeSlider(QWidget):
         return np.radians(range_deg[0]), np.radians(range_deg[1])
 
 class WeightsPanel(QFrame):
-    ''''Allows user to change weights.'''
+    '''allows user to modify scoring weights'''
+    changed = Signal()
+
     def __init__(self):
         super().__init__()
-        self.weights = {}
-        self.main_layout = QVBoxLayout(self)
 
-        # should use editable version of ValueRows.
+        self.main_layout = QVBoxLayout(self)
+        self.title = QLabel("Scoring Weights")
+        self.title.setStyleSheet("font-weight: bold;")
+        self.main_layout.addWidget(self.title)
+
+        self.sliders = {}
+
+        for name in SCORER_NAMES:
+            slider = ValueSlider(init_min=0,init_max=300,init_value=100,suffix="%", label=name)
+            self.main_layout.addWidget(slider)
+            self.sliders[name] = slider
+            slider.slider.valueChanged.connect(lambda x: self.changed.emit())
+
+    def get_weights(self) -> list[float]:
+        '''returns weights as floats'''
+        return [self.sliders[scorer].slider.value() / 100 for scorer in SCORER_NAMES]
+
+    def set_weights(self, weights: list[float]) -> None:
+        '''load weights from config/state.'''
+        for name, weight in zip(SCORER_NAMES, weights):
+            self.sliders[name].slider.setValue(int(weight * 100))

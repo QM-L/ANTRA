@@ -78,10 +78,15 @@ class MainWindow(QMainWindow):
         self.controls.start_raytracing_btn.clicked.connect(self.start_raytracing)
         self.controls.advice_combo.currentIndexChanged.connect(self.on_advice_selected)
         self.controls.scoring_toggle_btn.toggled.connect(self.advice_page.toggle_scoring_colors)
+        self.controls.check_weights_btn.clicked.connect(self.update_body_scoring)
+        self.controls.find_paths_button.clicked.connect(self.generate_advice)
 
         # range sliders
         self.controls.theta_slider.changed.connect(self.update_range_preview)
         self.controls.phi_slider.changed.connect(self.update_range_preview)
+
+        # weight sliders
+        self.controls.weights_panel.changed.connect(self.update_weights_state)
 
         # logic handler signals
         self.logic.dicom_loaded.connect(self.on_dicom_loaded)
@@ -113,9 +118,8 @@ class MainWindow(QMainWindow):
         self.advice_page.highlight_advice(index, self.state.advice, self.state.origin)
 
     def on_raytracing_done(self):
-        self.header.unlock_advice()
-        self.controls.populate_advice_combo(self.state.advice)
-        self.advice_page.show_results(self.state.visualizer,self.state.raytracer,self.state.advice,self.controls.get_max_results())
+        self.controls.check_weights_btn.setEnabled(True)
+        self.update_body_scoring()
 
     ### Actions
 
@@ -135,12 +139,19 @@ class MainWindow(QMainWindow):
         data = self.state.tumor_analyzer.stats_for_origin(pos)
         self.controls.info_panel.update_data(data)
         return pos
+    
+    def update_weights_state(self):
+        self.state.weights = self.controls.weights_panel.get_weights()
+        self.controls.find_paths_button.setEnabled(True)
+
+    def update_body_scoring(self):
+        self.advice_page.show_scoring(self.state.visualizer, self.state.origin, self.state.score_data, self.state.weights)
+        self.logic.store_weighted_scores()
 
     def confirm_tumor(self):
         pos = self.update_info()
         self.logic.confirm_ablation_center(pos)
         self.header.advice_btn.setEnabled(True)
-
 
     def start_raytracing(self):
         self.logic.run_raytracing( self.controls.get_theta_rad(), self.controls.get_phi_rad(), self.controls.get_density(), self.controls.get_max_results())
@@ -150,6 +161,12 @@ class MainWindow(QMainWindow):
         self.state.raytracer.set_theta_range(*self.controls.get_theta_rad())
         self.state.raytracer.set_phi_range(*self.controls.get_phi_rad())
         self.advice_page.update_range_preview(self.state.raytracer, self.controls.get_density())
+
+    def generate_advice(self):
+        advice = self.logic.get_needle_advice()
+        self.state.advice = advice
+        self.controls.populate_advice_combo(advice)
+        self.advice_page.show_advice(self.state.advice, self.state.origin, self.controls.get_max_results())
 
     def go_to_setup(self):
         self.pages.setCurrentWidget(self.setup_page)
@@ -187,8 +204,8 @@ class MainWindow(QMainWindow):
     
     def closeEvent(self, event):
         '''Override closing: make sure all plots close first.'''
-        self.setup_page.cleanup()
-        self.select_page.cleanup()
+        self.setup_page.closeEvent()
+        self.select_page.closeEvent()
         super().closeEvent(event)
         
 
