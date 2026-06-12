@@ -11,6 +11,7 @@ class Raytracer():
         # ray data defaults
         self.theta_range   = [0,2*np.pi] # offset, angle (both pos)
         self.phi_range     = [0,  np.pi] # offset, angle (both pos)
+        self.theta_offset  = np.pi/2     # make sure seam is at posterior
 
         # segmentation data 
         self.segmentations = segmentations
@@ -45,7 +46,7 @@ class Raytracer():
 
         # generate and collect scores
         scorer = Scorer(self.segmentations, self.origin)
-        scores = [{"length": ray.total_length, "dir": ray.vector, "theta":angles[i][0],"phi":angles[i][1],"scores":scorer.get_scores(ray)} for i,ray in enumerate(rays)]
+        scores = [{"entry_voxel": ray.entry_voxel, "length": ray.total_length, "dir": ray.vector, "theta":angles[i][0],"phi":angles[i][1],"scores":scorer.get_scores(ray)} for i,ray in enumerate(rays)]
         return rays, scores
 
     def generate_n_directions(self, n: int) -> tuple[np.ndarray,np.ndarray]:
@@ -64,7 +65,7 @@ class Raytracer():
   
         # # remove out of range
         angle_mask = (theta <= self.theta_range[1])
-        theta = theta[angle_mask] + self.theta_range[0]
+        theta = theta[angle_mask] + self.theta_range[0] + self.theta_offset
         phi = phi[angle_mask]
 
         # turn into vector

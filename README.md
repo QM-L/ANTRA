@@ -1,20 +1,49 @@
 # ANTRA: Ablation Needle Trajectory Advisor
 
-Antra is a system meant for liver ablation procedures during the needle planning phase. It will segment, analyze and extrapolate from a CT-scan dicom, outputting possible needle trajectory from a user defined ablation center.
+ANTRA is a tool for assisting liver ablation planning. Given a CT scan (DICOM series) as input, the system generates anatomical segmentations, analyzes surrounding structures using voxel raytracing, and outputs candidate needle trajectories from a user-defined ablation center.
 
-### Usage
+The goal of ANTRA is to support pre-op needle trajectory planning by identifying viable needle insertion paths while accounting for segmented anatomical structures.
 
-At the moment, Antra is not yet fit for compilation. Running the python script raw or via the bat files is the only tested form of usage. This will run the tumor selection demo followed by a visualisation of raytracing. This might take ~1 minute. On the first run, segmentation will be ran, which might take ~10 minutes without a CUDA-enabled GPU.
-1. Clone the repository
+![ANTRA results screen](img/trajectories.png)
+
+### Scoring Factors
+Currently, ANTRA analyzes needle ablation trajectories for relevant scoring data and scores them based on five factors:
+- Critical tissue penetration (Illumination based scoring)
+- Skin-needle puncture angle
+- Needle trajectory length
+- Healthy liver entrance
+- Full ablation tumor coverage
+
+## Usage
+
+At the moment, Antra is not yet fitted for compilation and only distributed as source code. Running the python script directly or via the bat files is the only supported form of usage.
+
+#### Setup
+1. Clone the repository:
 ```
-git clone https://github.com/QueasyQuery/OCKY-bot
+git clone https://github.com/QueasyQuery/ANTRA
 ```
-2. Run `setup.bat` once on download (installs dependencies)
-3. Put a dicom folder of a ct-scan into `/scans/`. 
-4. Run `run_tool.bat` and enter the name of the dicom folder.
 
-To test repeatedly without having to enter a dicom folder each time, change the variable `DEFAULT_DICOM` in `main.py` and run `run_raw.bat`. 
+2. Run `setup.bat` once to install all dependencies.
+3. Place a CT scan DICOM folder inside `/scans/`
+4. Configure the desired needle parameters in `/config/general.ini`
+#### Running ANTRA
+1. Launch the application using `run_tool.bat`
+2. Select Import New Scan and choose the desired DICOM folder.
+3. Click Start Segmentation.
+- Segmentation may take 10+ minutes on systems without CUDA acceleration.
+- Completed segmentations can be reused later through Load Past Segmentation.
+4. Open the Ablation Zone Selection tab.
+- Select the desired ablation center.
+- Click Confirm Selected Point.
+5. Open the Needle Placement tab.
+- Choose a ray-tracing range and click Raytrace.
+- Adjust trajectory scoring weights as desired and click rescore.
+- Click Show Advised Needle Paths to see needle trajectories.
+
+## Disclaimer
+Please note that ANTRA is a research prototype and is not intended to be used as a real clinical decision-making tool for patient treatment.
 
 ## Acknowledgements
 
- - [TotalSegmentator](https://github.com/wasserth/totalsegmentator)
+ - [TotalSegmentator (used for anatomical segmentation)](https://github.com/wasserth/totalsegmentator)

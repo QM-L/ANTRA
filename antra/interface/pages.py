@@ -72,12 +72,6 @@ class SetupPage(SectionFrame):
         self.ablation_plotter.clear()
         self.visualizer = None
 
-    def closeEvent(self, event):
-        self.cleanup()
-        self.seg_plotter.close()
-        self.ablation_plotter.close()
-        super().closeEvent(event)
-
 
 class SelectPage(SectionFrame):
     '''Select visuals: linked DICOM slice viewer with selector enabled.'''
@@ -148,11 +142,10 @@ class AdvicePage(SectionFrame):
     ### scoring / advice results
 
     def clear_range_actors(self):
-        '''Remove the range actors if exists'''
+        '''Remove the range actors if exists. Set segmentation to invisible.'''
         if self._seg_actors is not None:
             for actor in self._seg_actors:
-                self.plotter.remove_actor(actor)
-            self._seg_actor = None
+                actor.SetVisibility(False)
         if self._range_actor is not None:
             self.plotter.remove_actor(self._range_actor)
             self._range_actor = None
@@ -163,9 +156,9 @@ class AdvicePage(SectionFrame):
         self.clear_range_actors()
 
         # clear previous if exists
-        if self._range_actor is not None:
-            self.plotter.remove_actor(self._range_actor)
-            self._range_actor = None
+        if self._scoring_actor is not None:
+            self.plotter.remove_actor(self._scoring_actor)
+            self._scoring_actor = None
 
         # body scoring mesh
         self._scoring_actor = visualizer.visualize_body_scoring(self.plotter, origin, score_data, weights)
@@ -217,7 +210,10 @@ class AdvicePage(SectionFrame):
         '''Show or hide the scoring color mesh.'''
         if self._scoring_actor is not None:
             self._scoring_actor.SetVisibility(visible)
-            self.plotter.render()
+        if self._seg_actors is not None:
+            for actor in self._seg_actors:
+                actor.SetVisibility(not visible)
+        self.plotter.render()
     
     def cleanup(self):
         # reset plotter
@@ -228,7 +224,3 @@ class AdvicePage(SectionFrame):
         self._range_actor = None
         self._scoring_actor = None
         self._arrow_actors = []
-
-    def closeEvent(self, event):
-        self.plotter.close()
-        super().closeEvent(event)

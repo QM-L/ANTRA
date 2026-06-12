@@ -14,7 +14,7 @@ class NeedleAdvisor():
         self.results = weighted_scores
 
     def advise(self) -> list[dict]:
-        '''turns list of {"theta", "phi", "scores"} for each ray
+        '''turns list of {"theta", "phi", "scores", "entry_voxel"} for each ray
            into a list of {"dir", "score"} for each viable patch center'''
 
         # generate grid with the weighted scores
@@ -41,9 +41,14 @@ class NeedleAdvisor():
             if region.num_pixels < self.min_patch_size: continue
             center = self.get_region_center(region, labelled)
 
-            advice.append({"theta": float(thetas[center[1]]),"phi": float(phis[center[0]]),"score": float(grid_scores[center])})
+            advice.append({
+                "theta": float(thetas[center[1]]),
+                "phi": float(phis[center[0]]),
+                "score": float(grid_scores[center]),
+                "area": float(region.num_pixels/res)
+            })
 
-        return sorted(advice, key=lambda a: a["score"], reverse=True)
+        return sorted(advice, key=lambda a: a["area"], reverse=True)
 
     def get_region_center(self, region, labelled_array):
         # each coordinate is valued with distance from edge

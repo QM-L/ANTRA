@@ -130,16 +130,16 @@ class MainWindow(QMainWindow):
     def load_ct_scan(self):
         folder = easygui.diropenbox(msg="ct scan / dicom selection", default="scans/")
         self.logic.load_dicom(folder)
-    
+
     def start_seg(self):
         self.logic.generate_segmentation()
-    
+
     def update_info(self):
         pos = self.select_page.dicom_widget.selected_voxel()
         data = self.state.tumor_analyzer.stats_for_origin(pos)
         self.controls.info_panel.update_data(data)
         return pos
-    
+
     def update_weights_state(self):
         self.state.weights = self.controls.weights_panel.get_weights()
         self.controls.find_paths_button.setEnabled(True)
@@ -169,15 +169,20 @@ class MainWindow(QMainWindow):
         self.advice_page.show_advice(self.state.advice, self.state.origin, self.controls.get_max_results())
 
     def go_to_setup(self):
+        if self.state.page == "setup": return 
+        self.state.page = "setup"
+
         self.pages.setCurrentWidget(self.setup_page)
         self.controls.setCurrentWidget(self.controls.controls_setup)
         
         # clean other pages
         self.advice_page.cleanup()
         self.select_page.cleanup()
-        self.state.page = "setup"
-
+        
     def go_to_select(self):
+        if self.state.page == "select": return 
+        self.state.page = "select"
+
         self.pages.setCurrentWidget(self.select_page)
         self.controls.setCurrentWidget(self.controls.controls_select)
         self.select_page.show_dicom(self.state.visualizer)
@@ -186,26 +191,29 @@ class MainWindow(QMainWindow):
         # clean other pages
         self.advice_page.cleanup()
         self.setup_page.cleanup()
-        self.state.page = "select"
 
     def go_to_advice(self):
-        # set up advice page with base scene and range preview on first visit
+        if self.state.page == "advice": return 
+        self.state.page = "advice"
         print("Setting up advice page, this can take a few seconds...")
-        self.logic.init_raytracer()
-        self.advice_page.setup(self.state.visualizer)
-        self.advice_page.update_range_preview(self.state.raytracer, self.controls.get_density())
+
+        # set up advice page with base scene and range preview
         self.pages.setCurrentWidget(self.advice_page)
         self.controls.setCurrentWidget(self.controls.controls_advice)
-        
+        self.advice_page.setup(self.state.visualizer)
+        self.logic.init_raytracer(self.controls.get_theta_rad(), self.controls.get_phi_rad())
+        self.controls.weights_panel.set_weights(self.state.config.gettuple('scoring','weights'))
+        self.advice_page.update_range_preview(self.state.raytracer, self.controls.get_density())
+
         # clean other pages
         self.select_page.cleanup()
         self.setup_page.cleanup()
-        self.state.page = "advice"
     
     def closeEvent(self, event):
         '''Override closing: make sure all plots close first.'''
-        self.setup_page.closeEvent()
-        self.select_page.closeEvent()
+        if self.setup_page.seg_plotter: self.setup_page.seg_plotter.close()
+        if self.setup_page.ablation_plotter: self.setup_page.ablation_plotter.close()
+        if self.advice_page.plotter: self.advice_page.plotter.close()
         super().closeEvent(event)
         
 

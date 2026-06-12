@@ -78,9 +78,11 @@ class LogicHandler(QObject):
         self.state.origin = pos_mm
         print(f"Set ablation center at {pos_mm}")
     
-    def init_raytracer(self):
+    def init_raytracer(self, theta, phi):
         ablation_dist = self.state.config.getint('needle', 'ablation_center_dist')
         rt = Raytracer(ablation_dist, self.state.segmentations)
+        rt.set_theta_range(*theta)
+        rt.set_phi_range(*phi)
         rt.set_origin(*self.state.origin)
         self.state.raytracer = rt
 

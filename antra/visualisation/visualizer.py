@@ -212,10 +212,10 @@ class Visualizer():
         cloud = pv.PolyData(points)
         cloud["score"] = np.array(scores)
         body_mesh = body_mesh.interpolate(cloud, radius=5)
-        
+
         # plot
-        actor = plotter.add_mesh(body_mesh, scalars="score", cmap="Oranges", log_scale=False, show_scalar_bar=True, scalar_bar_args={"color":"white"})
-        return actor
+        scoring_actor = plotter.add_mesh(body_mesh, name="body_scoring", scalars="score", cmap="Oranges", log_scale=False, show_scalar_bar=True, scalar_bar_args={"color":"white"})
+        return scoring_actor
 
     def demo_needle_advisor(self, plotter: pv.Plotter, origin: list[float], score_data: list[dict], weights: list[float]):
         '''Visualize weighted ray scores and advised needle directions. only called after finalizing weights'''

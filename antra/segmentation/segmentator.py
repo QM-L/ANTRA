@@ -4,6 +4,7 @@ import numpy as np
 from scipy.ndimage import binary_dilation, find_objects
 import nibabel as nib
 import nibabel.orientations as orient
+import torch
 
 from totalsegmentator.python_api import totalsegmentator
 from totalsegmentator.map_to_binary import class_map
@@ -37,7 +38,8 @@ class Segmentation():
 
         # generate
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        raw_image = totalsegmentator(input=self.dicom.path, task=self.task, output=None, ml=False)
+        device = "gpu" if torch.cuda.is_available() else "cpu"
+        raw_image = totalsegmentator(input=self.dicom.path, task=self.task, output=None, ml=False, device=device)
         processed_image = self.apply_margins(self.ensure_lps((raw_image)))
         nib.save(processed_image, file_path.absolute())
 

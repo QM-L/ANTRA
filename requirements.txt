@@ -5,4 +5,5 @@ SimpleITK
 TotalSegmentator
 torch
 pyside6
+superqt
 pyvistaqt

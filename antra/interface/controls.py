@@ -57,16 +57,16 @@ class ControlsPanel(QStackedWidget):
         frame = SectionFrame()
         #  angular range sliders 
         frame.add_widget(QLabel("Theta range (azimuth):"))
-        self.theta_slider = RangeSlider(0, 360, (0, 360), "°")
+        self.theta_slider = RangeSlider(0, 360, (60, 300), "°")
         frame.add_widget(self.theta_slider)
 
         frame.add_widget(QLabel("Phi range (elevation):"))
         self.phi_slider = RangeSlider(0, 180, (25, 155), "°")
         frame.add_widget(self.phi_slider)
 
-        # density & max needles
+        # density
         frame.add_widget(QLabel("Sampling density (rays/srad²):"))
-        self.density_slider = ValueSlider(50, 1000, 250)
+        self.density_slider = ValueSlider(50, 1000, 500)
         frame.add_widget(self.density_slider)
         frame.add_widget(QLabel("Max needle paths shown:"))
         self.max_results_slider = ValueSlider(1, 20, 5)
@@ -103,13 +103,16 @@ class ControlsPanel(QStackedWidget):
         self.scoring_toggle_btn.toggled.connect(self._on_scoring_toggle)
         frame.add_widget(self.scoring_toggle_btn)
 
+        self.phi_slider.changed.emit() # update slider values to basic settings
+
+
         return frame
 
     def populate_advice_combo(self, advice: list[dict]) -> None:
         '''Fill the combo box with ranked advice entries after raytracing.'''
         self.advice_combo.clear()
         for i, adv in enumerate(advice):
-            self.advice_combo.addItem(f"#{i+1}  score: {adv['score']:.3f}")
+            self.advice_combo.addItem(f"#{i+1} Area: {adv['area']:.1f} score: {adv['score']:.3f}")
         self.advice_combo.setEnabled(True)
         self.scoring_toggle_btn.setEnabled(True)
 

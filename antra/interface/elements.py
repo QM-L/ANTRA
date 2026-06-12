@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 
 from superqt import QRangeSlider
-from PySide6.QtWidgets import QLabel, QWidget, QVBoxLayout, QHBoxLayout, QFrame, QPushButton, QTextEdit, QSlider
+from PySide6.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QFrame, QPushButton, QTextEdit, QSlider
 from PySide6.QtCore import Signal, Qt
 
 from antra.visualisation.visualizer import Visualizer
@@ -15,6 +15,7 @@ class SectionFrame(QFrame):
 
     def __init__(self, fill=True, border=True):
         super().__init__()
+        self.app = QApplication.instance()
         if border: self.setFrameShape(QFrame.StyledPanel)
         self.content_layout = QVBoxLayout()
 
@@ -36,6 +37,7 @@ class HeaderBar(QFrame):
 
     def __init__(self, version: str, parent=None):
         super().__init__(parent)
+        self.app = QApplication.instance()
         self.setObjectName("appHeader")
 
         self.setup_btn = QPushButton("Setup")
@@ -57,6 +59,7 @@ class HeaderBar(QFrame):
         layout.addWidget(self.select_btn, 2)
         layout.addWidget(self.advice_btn, 2)
 
+        # Connections
         self.setup_btn.clicked.connect(self.setup_clicked)
         self.select_btn.clicked.connect(self.select_clicked)
         self.advice_btn.clicked.connect(self.advice_clicked)
@@ -71,6 +74,7 @@ class HeaderBar(QFrame):
 class LogPanel(SectionFrame):
     def __init__(self):
         super().__init__(False, False)
+        self.app = QApplication.instance()
         self.console = QTextEdit()
         self.console.setReadOnly(True)
         
@@ -78,6 +82,12 @@ class LogPanel(SectionFrame):
     
     def write(self, text):
         self.console.append(text)
+        cursor = self.console.textCursor()
+        cursor.movePosition(cursor.MoveOperation.End)
+        self.console.setTextCursor(cursor)
+
+        # scroll
+
 
 
 class DicomSliceWidget(QWidget):
@@ -85,6 +95,7 @@ class DicomSliceWidget(QWidget):
 
     def __init__(self, selection=False, parent=None):
         super().__init__(parent)
+        self.app = QApplication.instance()
         self.select_active = selection
         self.box = QVBoxLayout(self)
         self.box.setContentsMargins(0, 0, 0, 0)
@@ -114,8 +125,9 @@ class DicomSliceWidget(QWidget):
 
 class ValueRow(QWidget):
     '''singular status label.'''
-    def __init__(self, key: str, initial_value: str = "", parent=None, editable=False):
+    def __init__(self, key: str, initial_value: str = "", parent=None):
         super().__init__(parent)
+        self.app = QApplication.instance()
 
         # Main horizontal layout
         layout = QHBoxLayout(self)
@@ -139,6 +151,7 @@ class ValuePanel(QFrame):
     ''''Column of status labels that can be updated with a dict.'''
     def __init__(self, title: str =None, parent=None):
         super().__init__(parent)
+        self.app = QApplication.instance()
         self.rows = {}
 
         self.main_layout = QVBoxLayout(self)
@@ -162,6 +175,7 @@ class ValueSlider(QWidget):
     ''''Slider with a label next to it that shows the value.'''
     def __init__(self, init_min: int, init_max: int, init_value: int, suffix: str = "", label=None):
         super().__init__()
+        self.app = QApplication.instance()
 
         # widgets
         self.name = QLabel(label)
@@ -188,6 +202,7 @@ class RangeSlider(QWidget):
 
     def __init__(self, init_min: int, init_max: int, init_value: tuple[int, int], suffix: str = ""):
         super().__init__()
+        self.app = QApplication.instance()
         self.suffix = suffix
 
         # widgets
@@ -220,6 +235,7 @@ class WeightsPanel(QFrame):
 
     def __init__(self):
         super().__init__()
+        self.app = QApplication.instance()
 
         self.main_layout = QVBoxLayout(self)
         self.title = QLabel("Scoring Weights")
