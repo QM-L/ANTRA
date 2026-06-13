@@ -53,11 +53,10 @@ class Visualizer():
         plotter.add_mesh(sphere, color='cyan', opacity=0.12)
         plotter.reset_camera()
 
-    def plot_segmentation(self, plotter: pv.Plotter, seg_task='total', cmap='Reds', manual_array: np.ndarray = None, opacity: float = 0.95):
+    def plot_segmentation(self, plotter: pv.Plotter, seg_task='total', cmap='Reds', opacity: float = 0.95):
         '''Plots specified segmentation'''
         seg = self.seg.get(seg_task)
-        if not seg and not manual_array: return
-        array = manual_array or seg.get_array(np.float32)
+        array = np.asarray(seg.raw_mask.dataobj)
 
         # define the masks's 3d volume
         volume = pv.ImageData()
