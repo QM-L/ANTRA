@@ -1,6 +1,6 @@
 # ANTRA: Ablation Needle Trajectory Advisor
 
-ANTRA is a tool for assisting liver ablation planning. Given a CT scan (DICOM series) as input, the system generates anatomical segmentations, analyzes surrounding structures using voxel raytracing, and outputs candidate needle trajectories from a user-defined ablation center.
+ANTRA is a tool for assisting liver ablation planning. When given a CT scan (DICOM series) as input, the multi-stage pipeline generates anatomical segmentations, analyzes paths through surrounding structures using voxel raytracing, and outputs candidate needle trajectories from a user-defined ablation center.
 
 The goal of ANTRA is to support pre-op needle trajectory planning by identifying viable needle insertion paths while accounting for segmented anatomical structures.
 
@@ -16,7 +16,7 @@ Currently, ANTRA analyzes needle ablation trajectories for relevant scoring data
 
 ## Usage
 
-At the moment, Antra is not yet fitted for compilation and only distributed as source code. Running the python script directly or via the bat files is the only supported form of usage.
+At the moment, Antra is not yet fitted for compilation and only distributed as source code. Running the python script directly or via the bat files is the only supported form of usage. Code was tested with python 3.13.
 
 #### Setup
 1. Clone the repository:
