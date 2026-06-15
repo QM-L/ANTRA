@@ -1,6 +1,12 @@
 # sensitive data
-scans/
-data/
+/scans/*
+/data/*
+
+# example data exclusion
+!/scans/DICOM_3D_IRCADB_01_8
+!/scans/DICOM_3D_IRCADB_01_8/**
+!/data/Segmentation_3D_IRCADB_01_8
+!/data/Segmentation_3D_IRCADB_01_8/**
 
 # vscode
 .vscode/
