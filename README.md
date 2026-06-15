@@ -47,3 +47,4 @@ Please note that ANTRA is a research prototype and is not intended to be used as
 ## Acknowledgements
 
  - [TotalSegmentator (used for anatomical segmentation)](https://github.com/wasserth/totalsegmentator)
+ - [IRCAD (provided example from 3D-IRCADb-01 dataset)](https://www.ircad.fr/research/data-sets/liver-segmentation-3d-ircadb-01/)
