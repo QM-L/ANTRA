@@ -4,7 +4,7 @@ ANTRA is a tool for assisting liver ablation planning. When given a CT scan (DIC
 
 The goal of ANTRA is to support pre-op needle trajectory planning by identifying viable needle insertion paths while accounting for segmented anatomical structures.
 
-![ANTRA results screen](img/trajectories.png)
+![ANTRA results screen](trajectories.png)
 
 ### Scoring Factors
 Currently, ANTRA analyzes needle ablation trajectories for relevant scoring data and scores them based on five factors:
