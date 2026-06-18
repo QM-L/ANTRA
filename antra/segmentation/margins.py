@@ -3,8 +3,6 @@ import nibabel as nib
 from scipy.ndimage import binary_dilation, find_objects
 from totalsegmentator.map_to_binary import class_map
 
-from antra.general import config
-
 class MarginGenerator():
     '''expands a segmentation mask's labels by their configured margins.'''
 
@@ -57,6 +55,7 @@ class MarginGenerator():
             # get this tissue's margin and it's relative opacity, check if valid
             margin, opacity = self.get_tissue_margins(label)
             if opacity == 0: continue
+            if margin == 0: continue
 
             # get the margin mask and set it to the label plus the alpha's inverse
             margin_window = self.get_spherical_window(margin, voxel_sizes)

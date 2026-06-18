@@ -26,8 +26,7 @@ class Segmentation():
         self.raw_mask = self.floored_mask()
 
     def generate_mask(self, folder_name) -> nib.Nifti1Image:
-        '''generates a segmentation and exports it to data folder.
-        if the mask already exists, uses that.'''
+        '''generates a segmentation and exports it to data folder.'''
 
         # generate file name and location
         folder    = Path(__file__).parent.parent.parent / f'data/{folder_name}'

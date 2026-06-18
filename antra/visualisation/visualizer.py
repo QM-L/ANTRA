@@ -14,8 +14,7 @@ from antra.visualisation.tumor_selection import MplContrastHelper
 from antra.general.config import get_label_opacity_maps, load_configs
 
 class Visualizer():
-    '''Arbitrary class to show results, has decent methods to display various things but 
-    is far from sorted right. needs to be replaced with a class that properly interacts with PySide6 to show plots.'''
+    '''Class containing all functions to visualize something to the user'''
     def __init__(self, image: DICOM_Scan, segmentations: dict[str,Segmentation]) -> None:
         self.image  = image
         self.config = load_configs()
@@ -57,7 +56,7 @@ class Visualizer():
         '''Plots specified segmentation'''
         seg = self.seg.get(seg_task)
         array = np.asarray(seg.raw_mask.dataobj)
-
+    
         # define the masks's 3d volume
         volume = pv.ImageData()
         volume.dimensions = np.array(array.shape) + 1
