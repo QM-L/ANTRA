@@ -66,7 +66,7 @@ class ControlsPanel(QStackedWidget):
 
         # density
         frame.add_widget(QLabel("Sampling density (rays/srad²):"))
-        self.density_slider = ValueSlider(50, 1000, 500)
+        self.density_slider = ValueSlider(50, 2000, 1000)
         frame.add_widget(self.density_slider)
         frame.add_widget(QLabel("Max needle paths shown:"))
         self.max_results_slider = ValueSlider(1, 20, 5)
