@@ -14,7 +14,7 @@ from antra.visualisation.visualizer import Visualizer
 VERSION = "v0.0.1"
 
 class MainWindow(QMainWindow):
-    def __init__(self, preload_seg=None):
+    def __init__(self, preload_seg=None, preload_origin=None, raytrace_settings=None):
         super().__init__()
         self.setWindowTitle("Ablation Needle Trajectory Advisor")
         self.resize(1200, 700)
@@ -28,8 +28,15 @@ class MainWindow(QMainWindow):
         sys.stdout = EmittingStream(textWritten=self.logs.write)
         print("Successfully initialized.")
 
-        # debug seg shortcut
-        if preload_seg: self.logic.load_segmentation(Path(__file__).parent.parent.parent / "data" / preload_seg)
+        # debug shortcuts
+        if preload_seg: 
+            self.logic.load_segmentation(Path(__file__).parent.parent.parent / "data" / preload_seg)
+            self.go_to_select()
+        if preload_origin:
+            self.state.origin = preload_origin
+            self.go_to_advice()
+        if raytrace_settings:
+            self.start_raytracing()
 
     def _build_ui(self):
         self.header = HeaderBar(VERSION)
@@ -233,10 +240,10 @@ def load_stylesheet(app):
         style = f.read()
         app.setStyleSheet(style)
 
-def run_application(seg=None):
+def run_application(seg=None, origin=None, raytrace=None):
     app = QApplication([])
     load_stylesheet(app)
 
-    window = MainWindow(seg)
+    window = MainWindow(seg, origin, raytrace)
     window.show()
     app.exec()
