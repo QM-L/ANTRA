@@ -106,6 +106,7 @@ class Scorer():
         gx, gy, gz = np.gradient(smoothed, voxel_size[0], voxel_size[1], voxel_size[2])
         return np.stack([gx, gy, gz], axis=-1)
 
+
 class AblationScorer():
     '''Seperate class to evaluate the ablation coverage'''
     def __init__(self, segmentations: dict[str, Segmentation], ablation_origin: tuple[float,float,float]):
@@ -122,7 +123,6 @@ class AblationScorer():
         # tumor mask array 
         seg               = segmentations['liver_vessels']
         self.seg_array    = np.asarray(seg.raw_mask.dataobj, dtype=np.uint8)
-        self.tumor_label  = 2
         self.resolution   = np.array(seg.dicom.resolution)
         self.tumor_points = TumorAnalyzer(segmentations).nearest_tumor_points(ablation_origin)
 
@@ -155,6 +155,7 @@ class AblationScorer():
         y = np.cross(z, x)
 
         return np.column_stack([x, y, z])
+
 
 class TumorAnalyzer():
     ''''Seperate class which analyzes tumors in the segmentation for info. used during selection to give user info.'''

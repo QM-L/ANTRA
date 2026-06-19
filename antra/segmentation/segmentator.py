@@ -23,7 +23,7 @@ class Segmentation():
         elif folder: self.mask, self.dicom = self.load_mask(folder)
         else: raise(ValueError("no dicom or folder specified for segmentation"))
 
-        self.raw_mask = self.floored_mask()
+        self.raw_mask = self.raw_mask()
 
     def generate_mask(self, folder_name) -> nib.Nifti1Image:
         '''generates a segmentation and exports it to data folder.'''
@@ -86,8 +86,12 @@ class Segmentation():
         self.mask = nib.Nifti1Image(new_array, self.mask.affine, self.mask.header)
         return self.mask
 
-    def floored_mask(self) -> nib.Nifti1Image:
-        '''returns the floored version of the mask i.e. for visualization.'''
+    def raw_mask(self):
+        '''Return raw mask without margins i.e. for visualization'''
+        # remove all values that are not integers
         array = np.asarray(self.mask.dataobj).astype(np.float32)
-        result = np.floor(array).astype(np.uint16)
-        return nib.Nifti1Image(result, self.mask.affine, self.mask.header)
+        labels = np.floor(array)
+        original = np.isclose(array, labels)
+        result = np.where(original, labels, 0)
+
+        return nib.Nifti1Image(result.astype(np.uint16),self.mask.affine,self.mask.header)

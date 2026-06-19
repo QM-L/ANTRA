@@ -106,6 +106,7 @@ class MainWindow(QMainWindow):
  
     def on_seg_loaded(self):
         self.header.unlock_select()
+
         # rebuild Visualizer now that segmentations are available
         vis = Visualizer(self.state.dicom, self.state.segmentations)
         self.state.visualizer = vis
