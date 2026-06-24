@@ -182,10 +182,9 @@ class TumorAnalyzer():
         '''returns stats for the tumor nearest to origin_mm.'''
         if self.count == 0: return {"nearest": None, "size_mm": 0.0, "max_radius_mm": 0.0}
         origin_mm = np.array(origin_vox) * self.resolution
-        origin = np.array(origin_mm, dtype=float)
 
         # find nearest tumor by centroid distance
-        nearest = min(self.tumors, key=lambda t: np.linalg.norm(t["center"] - origin))
+        nearest = self.nearest_tumor(origin_vox)
         pts = nearest["mm"]
 
         # max radius from center and volume
@@ -211,3 +210,8 @@ class TumorAnalyzer():
         origin = np.array(origin_mm, dtype=float)
         nearest = min(self.tumors, key=lambda t: np.linalg.norm(t["center"] - origin))
         return nearest["mm"] - origin
+    
+    def nearest_tumor(self, origin_vox):
+        '''returns the center of the nearest tumor to a coordinate'''
+        origin_mm = np.array(origin_vox) * self.resolution
+        return min(self.tumors,key=lambda t: np.linalg.norm(t["center"] - origin_mm))

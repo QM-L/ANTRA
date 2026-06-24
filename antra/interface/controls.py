@@ -46,11 +46,14 @@ class ControlsPanel(QStackedWidget):
         self.toggle_seg_btn = QPushButton("Toggle Segmentations")
         self.confirm_tumor_btn = QPushButton("Confirm Selected Point")
         self.info_panel = ValuePanel("Tumor Information", frame)
-        
+        self.use_tumor_center_btn = QPushButton("Use Nearest Tumor Center")
+        self.use_tumor_center_btn.setDisabled(True)
+
         frame.add_widget(self.toggle_seg_btn)
         frame.add_widget(self.confirm_tumor_btn)
+        frame.add_widget(self.use_tumor_center_btn)
         frame.add_widget(self.info_panel)
-
+        
         return frame
 
     def build_advice(self) -> SectionFrame:

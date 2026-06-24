@@ -116,7 +116,7 @@ class DicomSliceWidget(QWidget):
     
     def toggle_segmentations(self):
         '''Toggles whether segmentations are visible on the plot'''
-
+        # TODO: this
 
     def selected_voxel(self) -> tuple[int, int, int] | None:
         '''Returns the currently selected (x, y, z) voxel, or None if not loaded.'''

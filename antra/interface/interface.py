@@ -80,6 +80,7 @@ class MainWindow(QMainWindow):
         self.controls.start_seg_btn.clicked.connect(self.start_seg)
         self.controls.confirm_tumor_btn.clicked.connect(self.confirm_tumor)
         self.select_page.dicom_widget.customContextMenuRequested.connect(self.update_info)
+        self.controls.use_tumor_center_btn.clicked.connect(self.use_tumor_center)
 
         # advice controls
         self.controls.start_raytracing_btn.clicked.connect(self.start_raytracing)
@@ -146,6 +147,7 @@ class MainWindow(QMainWindow):
         pos = self.select_page.dicom_widget.selected_voxel()
         data = self.state.tumor_analyzer.stats_for_origin(pos)
         self.controls.info_panel.update_data(data)
+        self.controls.use_tumor_center_btn.setEnabled(True)
         return pos
 
     def update_weights_state(self):
@@ -159,6 +161,14 @@ class MainWindow(QMainWindow):
     def confirm_tumor(self):
         pos = self.update_info()
         self.logic.confirm_ablation_center(pos)
+        self.header.advice_btn.setEnabled(True)
+
+    def use_tumor_center(self):
+        pos = self.select_page.dicom_widget.selected_voxel()
+        tumor = self.state.tumor_analyzer.nearest_tumor(pos)
+        center_mm = tumor["center"]
+        self.state.origin = center_mm
+        print(f"Set ablation center at tumor centroid {center_mm}")
         self.header.advice_btn.setEnabled(True)
 
     def start_raytracing(self):
