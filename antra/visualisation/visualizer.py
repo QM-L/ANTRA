@@ -36,7 +36,7 @@ class Visualizer():
         actors = []
         actors.append(self.plot_segmentation(plotter, 'total', cmap='Reds', opacity=0.5))
         actors.append(self.plot_segmentation(plotter, 'body',  cmap='Grays', opacity=0.15))
-        actors.append(self.plot_segmentation(plotter, 'liver_vessels', cmap='Blues', opacity=0.9))
+        actors.append(self.plot_segmentation(plotter, 'liver_vessels', cmap='Blues', opacity=0.95))
         plotter.reset_camera()
         return actors
 
@@ -214,27 +214,3 @@ class Visualizer():
         # plot
         scoring_actor = plotter.add_mesh(body_mesh, name="body_scoring", scalars="score", cmap="Oranges", log_scale=False, show_scalar_bar=True, scalar_bar_args={"color":"white"})
         return scoring_actor
-
-    def demo_needle_advisor(self, plotter: pv.Plotter, origin: list[float], score_data: list[dict], weights: list[float]):
-        '''Visualize weighted ray scores and advised needle directions. only called after finalizing weights'''
-
-        # get analysis and advice
-        advisor = NeedleAdvisor(self.config, score_data)
-        advice  = advisor.advise()
-        print(f"Found {len(advice)} viable patch(es)")
-
-        # advice directions
-        ray_length = 100
-        for i, adv in enumerate(advice):
-            t = adv['theta']
-            p = adv['phi']
-            d = np.array([np.sin(p)*np.cos(t), np.sin(p)*np.sin(t), np.cos(p)])
-
-            # arrow from origin outward
-            plotter.add_mesh(pv.Arrow(start=origin, direction=d, scale=ray_length, shaft_radius=0.01, tip_radius=0.03), color="yellow", name=f"advice_{i}")
-    
-            # label with rank and score
-            plotter.add_point_labels( [origin + d * ray_length], [f"#{i+1}  {adv['score']:.3f}"], font_size=12, text_color="yellow",fill_shape=False, shape_opacity=0)
-
-        # scene
-        plotter.add_mesh(pv.PolyData([origin]), point_size=12, render_points_as_spheres=True, color="red")

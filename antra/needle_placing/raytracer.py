@@ -34,6 +34,9 @@ class Raytracer():
     def set_phi_range(self, lower: float, upper: float) -> None:
         self.phi_range = [lower, upper - lower]
 
+    def set_theta_offset(self, value: float) -> None:
+        self.theta_offset = value % 2*np.pi
+
     def get_area(self):
         '''returns the current area in the selected range in srad²'''
         return 4*np.pi * (self.theta_range[1]*self.phi_range[1]) / (np.pi**2*2)  

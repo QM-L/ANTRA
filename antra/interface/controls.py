@@ -115,7 +115,7 @@ class ControlsPanel(QStackedWidget):
         '''Fill the combo box with ranked advice entries after raytracing.'''
         self.advice_combo.clear()
         for i, adv in enumerate(advice):
-            self.advice_combo.addItem(f"#{i+1} Angle Margin: {adv['angle']:.1f} Score: {adv['score']:.3f}")
+            self.advice_combo.addItem(f"#{i+1} Angle Margin: {adv['angle']:.1f}° Score: {adv['score']:.3f}")
         self.advice_combo.setEnabled(True)
         self.scoring_toggle_btn.setEnabled(True)
 

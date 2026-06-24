@@ -50,7 +50,7 @@ class NeedleAdvisor():
                 "theta": float(thetas[center[1]]),
                 "phi": float(phis[center[0]]),
                 "score": float(grid_scores[center]),
-                "angle": radius
+                "angle": float(np.rad2deg(radius))
             })
 
         return sorted(advice, key=lambda a: a["angle"], reverse=True)

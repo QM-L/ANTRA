@@ -135,8 +135,7 @@ class AdvicePage(SectionFrame):
         self.plotter.render()
 
     def update_range_preview(self, raytracer, density) -> None:
-        '''Highlight the currently selected angular range as a blue point cloud
-           projected onto the body surface at a fixed radius.'''
+        '''show current trajectory range as blue points'''
         self._range_actor = self.visualizer.update_range_preview(self.plotter, raytracer, density)
 
     ### scoring / advice results
@@ -185,7 +184,7 @@ class AdvicePage(SectionFrame):
             arrow = pv.Arrow(start=origin, direction=d, scale=ray_length,shaft_radius=0.008, tip_radius=0.025)
             actor = self.plotter.add_mesh(arrow, color='yellow', name=f'advice_{i}')
             self._arrow_actors.append(actor)
-            self.plotter.add_point_labels( [origin + d * ray_length],[f"#{i+1}  {adv['score']:.3f}"],font_size=12, text_color='yellow',fill_shape=False, shape_opacity=0)
+            self.plotter.add_point_labels( [origin + d * ray_length],[f"#{i+1}  T: {np.rad2deg(adv['theta']):.1f}° P: {np.rad2deg(adv['phi']):.1f}°"],font_size=12, text_color='yellow',fill_shape=False, shape_opacity=0)
 
     def highlight_advice(self, index: int, advice: list[dict], origin) -> None:
         '''Redraw arrows with the selected one highlighted in a different color.'''
