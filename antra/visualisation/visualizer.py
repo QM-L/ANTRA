@@ -23,7 +23,7 @@ class Visualizer():
         self.volume = self.get_3D_volume()
         self._range_actor = None
 
-    def get_3D_volume(self):
+    def get_3D_volume(self) -> pv.ImageData:
         volume = pv.ImageData()
         volume.dimensions = self.array.shape
         volume.spacing = self.image.resolution
@@ -31,7 +31,7 @@ class Visualizer():
         volume = volume.resample(0.3,interpolation="nearest")
         return volume
 
-    def plot_base_scene(self, plotter: pv.Plotter):
+    def plot_base_scene(self, plotter: pv.Plotter) -> tuple[pv.Actor,pv.Actor,pv.Actor]:
         ''''Plots the body and it's insides.'''
         actors = []
         actors.append(self.plot_segmentation(plotter, 'total', cmap='Reds', opacity=0.5))
@@ -40,7 +40,7 @@ class Visualizer():
         plotter.reset_camera()
         return actors
 
-    def plot_ablation_zone(self, plotter: pv.Plotter):
+    def plot_ablation_zone(self, plotter: pv.Plotter) -> None:
         '''plots the ablation zone centered around origin'''
         r_r = self.config.getfloat('ablation', 'radius_r')
         r_z = self.config.getfloat('ablation', 'radius_z')
@@ -52,7 +52,7 @@ class Visualizer():
         plotter.add_mesh(sphere, color='cyan', opacity=0.12)
         plotter.reset_camera()
 
-    def plot_segmentation(self, plotter: pv.Plotter, seg_task='total', cmap='Reds', opacity: float = 0.95):
+    def plot_segmentation(self, plotter: pv.Plotter, seg_task='total', cmap='Reds', opacity: float = 0.95) -> pv.Actor:
         '''Plots specified segmentation'''
         seg = self.seg.get(seg_task)
         array = np.asarray(seg.raw_mask.dataobj)
@@ -68,8 +68,8 @@ class Visualizer():
         segmented = volume.threshold(value=0.5, scalars="label")
 
         # define custom colormap where liver is blue
-        if seg_task == "total":
-            n = int(np.floor(array).max()) + 1
+        n = int(np.floor(array).max()) + 1
+        if seg_task == "total" and n > 5:
             base   = plt.get_cmap(cmap, n)
             colors = [base(i / n) for i in range(n)]
             colors[5] = mcolors.to_rgba('yellow')
@@ -79,7 +79,7 @@ class Visualizer():
         actor = plotter.add_mesh(segmented, scalars="label", log_scale=True, cmap=cmap, opacity=opacity,show_scalar_bar=False)
         return actor
 
-    def build_slice_figure(self, select=False) -> tuple:
+    def build_slice_figure(self, select=False) -> tuple[plt.Figure, tuple]:
         '''Build the linked three-view Matplotlib figure for embedding.
         Returns (fig, state) so the caller can read the selected voxel.'''
         fig = plt.figure(layout='constrained')
@@ -187,7 +187,7 @@ class Visualizer():
         plotter.render()
         return self._range_actor
 
-    def visualize_body_scoring(self, plotter: pv.Plotter, origin: list[float], score_data: list[dict], weights: list[float]):
+    def visualize_body_scoring(self, plotter: pv.Plotter, origin: list[float], score_data: list[dict], weights: list[float], interpolation_radius: float = 5):
         '''Color the body surface mesh by ray scores from the origin.'''
         # body mask to vertex mesh
         array   = self.seg['body'].get_array(np.uint16)
@@ -209,8 +209,8 @@ class Visualizer():
         # Build a point cloud with score scalars
         cloud = pv.PolyData(points)
         cloud["score"] = np.array(scores)
-        body_mesh = body_mesh.interpolate(cloud, radius=5)
-
+        body_mesh = body_mesh.interpolate(cloud, radius=interpolation_radius)
+        
         # plot
         scoring_actor = plotter.add_mesh(body_mesh, name="body_scoring", scalars="score", cmap="Oranges", log_scale=False, show_scalar_bar=True, scalar_bar_args={"color":"white"})
         return scoring_actor

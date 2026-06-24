@@ -12,14 +12,15 @@ from antra.segmentation.margins import MarginGenerator
 
 class Segmentation():
     '''Creates a mask of a specified segmentation'''
-    def __init__(self, dicom=None, task: str = "total", folder: str = None, load=False):
+    def __init__(self, dicom=None, task: str = "total", folder: str = None, load=False, manual_array=None):
         self.task = task
         self.config = config.load_configs()
         self.dicom = dicom
         self.margin_generator = MarginGenerator(self.task, self.config)
 
-        # load data: no dicom, try to load from folder
-        if not load: self.mask = self.generate_mask(folder)
+        # load data: no manual array, no dicom? try to load from folder
+        if not (manual_array is None): self.mask = self.manual_array_mask(manual_array)
+        elif not load: self.mask = self.generate_mask(folder)
         elif folder: self.mask, self.dicom = self.load_mask(folder)
         else: raise(ValueError("no dicom or folder specified for segmentation"))
 
@@ -95,3 +96,7 @@ class Segmentation():
         result = np.where(original, labels, 0)
 
         return nib.Nifti1Image(result.astype(np.uint16),self.mask.affine,self.mask.header)
+    
+    def manual_array_mask(self, array):
+        '''Returns a mask based on an array'''
+        return self.margin_generator.apply_margins(nib.Nifti1Image(array.astype(np.uint16), np.eye(4)))

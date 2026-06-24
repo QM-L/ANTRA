@@ -1,17 +1,15 @@
 from pathlib import Path
 import hashlib
-import numpy as np
 import SimpleITK as itk
 from SimpleITK import Image
-import nibabel as nib
 
 class DICOM_Scan:
     # small reading / dataclass for reading and returning the ct scan and it's properties
 
-    def __init__(self, path: str):
+    def __init__(self, path: str=None, manual_img=None):
         # get image and properties
         self.path       = path
-        self.image      = self.read_DICOM(path)
+        self.image      = self.read_DICOM(path) if manual_img is None else manual_img
         self.array      = itk.GetArrayFromImage(self.image)
         self.origin     = self.image.GetOrigin()
         self.dimensions = self.image.GetSize()
@@ -21,6 +19,8 @@ class DICOM_Scan:
         print(f'loaded dicom with hash {self.id}.')
 
     def read_DICOM(self, input_path: str) -> Image:
+        if not input_path: return None
+
         # read dicom file / files
         reader = itk.ImageSeriesReader()
         path = Path(input_path)
