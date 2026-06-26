@@ -7,6 +7,10 @@
 !/scans/DICOM_3D_IRCADB_01_8/**
 !/data/Segmentation_3D_IRCADB_01_8
 !/data/Segmentation_3D_IRCADB_01_8/**
+!/scans/DICOM_3D_IRCADB_01_18
+!/scans/DICOM_3D_IRCADB_01_18/**
+!/data/Segmentation_3D_IRCADB_01_18
+!/data/Segmentation_3D_IRCADB_01_18/**
 
 # vscode
 .vscode/

@@ -35,6 +35,14 @@ def run_length_validation() -> None:
         "body": Segmentation(dicom, "body", manual_array=body)
         }
 
+    # plot this segmentation
+    plotter= pv.Plotter()
+    vis = Visualizer(dicom, phantoms)
+    vis.plot_segmentation(plotter, 'total', cmap='Grays', opacity=0.5)
+    vis.plot_segmentation(plotter, 'body',  cmap='Grays', opacity=0.15)
+    vis.plot_segmentation(plotter, 'liver_vessels', cmap='Reds', opacity=0.9)
+    plotter.show()
+
     # setup raytracer with origin in center
     ray_tracer = Raytracer(0, phantoms)
     ray_tracer.set_origin(*ray_origin)

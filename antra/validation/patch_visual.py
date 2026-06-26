@@ -12,6 +12,8 @@ from antra.needle_placing.raytracer import Raytracer
 from antra.needle_placing.scoring import weigh_score
 from antra.needle_placing.needle_advisor import NeedleAdvisor
 
+from noise import pnoise2 # extra import not included in requirements. pip install noise
+
 ## Plt font
 plt.rcParams.update({
     "font.family": "serif",
@@ -32,10 +34,10 @@ def score_heatmap():
         d) centers marked'''
 
     # setup objects
-    dicom = DICOM_Scan("scans/DICOM_3D_IRCADB_01_8")
-    seg = {task: Segmentation(dicom=dicom,task=task, folder="data/Segmentation_3D_IRCADB_01_8",load=True) for task in ["liver_vessels", "total","body"]}
+    dicom = DICOM_Scan("scans/DICOM_3D_IRCADB_01_18")
+    seg = {task: Segmentation(dicom=dicom,task=task, folder="data/Segmentation_3D_IRCADB_01_18",load=True) for task in ["liver_vessels", "total","body"]}
     raytracer = Raytracer(1, seg)
-    origin = (190.4, 128.3, 174.9)
+    origin = [97.0,144.5,93.6]
     raytracer.set_origin(*origin)
 
     # raytrace & score
@@ -43,6 +45,8 @@ def score_heatmap():
     weighted_scores = [{"theta": r["theta"],"phi": r["phi"],"weighted_score": weigh_score(r["scores"], [1, 1, 0.2, 0.5, 0.1])} for r in score_data]
     advisor = NeedleAdvisor(load_configs(), weighted_scores)
     data = advise_debug(advisor)
+
+    #data = make_dummy_data()
 
     # plotting
     fig, ax = plt.subplots(2,2,figsize=(10,8), constrained_layout=True)
@@ -123,4 +127,39 @@ def advise_debug(advisor: NeedleAdvisor) -> list[dict]:
         "labelled": labelled,
         "centers": centers,
         "extent": [t.min(),t.max(),p.min(),p.max()]
+    }
+
+def make_dummy_data(res=500):
+    theta_min, theta_max = 0.5 * np.pi, 2.5 * np.pi
+    phi_min,   phi_max   = 0.0,          np.pi
+    extent = [theta_min, theta_max, phi_min, phi_max]
+
+    # noise
+    grid_scores = np.array([[pnoise2(col / res * 4,row / res * 4,octaves=6,persistence=0.5,lacunarity=2,repeatx=1024, repeaty=1024) for col in range(res)]for row in range(res)])
+
+    # normalise
+    grid_scores -= grid_scores.min()
+    grid_scores /= grid_scores.max()
+
+    # thresold
+    threshold = 0.75
+    binary = (grid_scores > threshold).astype(np.uint8)
+    distance = distance_transform_edt(binary)
+
+    # calculate centers
+    labeled, num_features = label(binary)
+    centers = []
+    for region_id in range(1, num_features + 1):
+        rows, cols = np.where(labeled == region_id)
+        if len(rows) < 500: continue
+        col_coord = theta_min + (cols.mean() / res) * (theta_max - theta_min)
+        row_coord = phi_min   + (rows.mean() / res) * (phi_max   - phi_min)
+        centers.append((col_coord, row_coord))
+
+    return {
+        "grid_scores": grid_scores,
+        "binary":      binary,
+        "distance":    distance,
+        "centers":     centers,
+        "extent":      extent
     }

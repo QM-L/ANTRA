@@ -11,22 +11,11 @@ from antra.needle_placing.needle_advisor import NeedleAdvisor
 from antra.validation.patch_visual import advise_debug
 from antra.needle_placing.scoring import weigh_score
 
-def plot_heatmap(folder, origin):
-    '''runs system from front to back without a gui, standard config. Only works for dicoms in /scans/'''
+def default_raytrace(folder, origin):
+    '''runs system from front to back without a gui, standard config.'''
     conf = load_configs()
-
-    # is dicom? segment
-    if Path(folder).parent.name == "scans":
-        dicom = DICOM_Scan(folder)
-        segmentations = {task:Segmentation(dicom,task,folder) for task in ["liver_vessels","total","body"]}
-
-    # is segmentation? load
-    elif Path(folder).parent.name == "data":
-        segmentations = {task:Segmentation(None,task,folder,True) for task in ["liver_vessels","total","body"]}
-        dicom = segmentations["total"].dicom
-    
-    # else: error
-    else: print(Path(folder).name, "is not a valid segmentation or dicom"); return
+    segmentations = {task:Segmentation(None,task,folder,True) for task in ["liver_vessels","total","body"]}
+    dicom = segmentations["total"].dicom
 
     # show base scene
     plotter= pv.Plotter()
@@ -41,7 +30,6 @@ def plot_heatmap(folder, origin):
     ray.set_origin(*origin)
     ray.set_phi_range(0,np.pi)
     ray.set_theta_range(0,2*np.pi)
-    ray.set_theta_offset(0)
     _,score_data = ray.analyze_range(2000)
 
     # advice
@@ -49,10 +37,20 @@ def plot_heatmap(folder, origin):
     advisor = NeedleAdvisor(load_configs(), weighted_scores)
     data = advise_debug(advisor)
 
-    # plotting
+    # print stat and return
+    max_score = np.max([score["weighted_score"] for score in weighted_scores])
+    nonzero = sum(score["weighted_score"] > 0 for score in weighted_scores)
+    threshold = sum(score["weighted_score"] > 0.5*max_score for score in weighted_scores)
+    percentage_nonzero = 100 * nonzero / len(weighted_scores)
+    percentage_threshold = 100 * threshold / len(weighted_scores)
+    print(f"NONZERO: {percentage_nonzero}%\nABOVE THRESHOLD: {percentage_threshold}")
+    return dicom, segmentations, data, score_data, conf
+
+def plot_heatmap(folder, origin):
+    dicom, segmentations, data, score_data, conf = default_raytrace(folder, origin)
+
     fig, ax = plt.subplots(1,1,figsize=(10,8), constrained_layout=True)
     theta_ticks = [0,0.5*np.pi,np.pi,1.5*np.pi,2*np.pi]
-    #theta_ticks = [0.5*np.pi,np.pi,1.5*np.pi,2*np.pi,2.5*np.pi]
     theta_labels = ["0",r"$\frac{\pi}{2}$",r"$\pi$", r"$\frac{3\pi}{2}$", r"$2\pi$"]
     phi_ticks = [0, 0.25*np.pi, 0.5*np.pi, 0.75*np.pi, np.pi]
     phi_labels = ["0",r"$\frac{\pi}{4}$", r"$\frac{\pi}{2}$", r"$\frac{3\pi}{4}$", r"$\pi$"]

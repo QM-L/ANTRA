@@ -60,7 +60,7 @@ class Visualizer():
         # define the masks's 3d volume
         volume = pv.ImageData()
         volume.dimensions = np.array(array.shape) + 1
-        volume.spacing    = np.sqrt((seg.raw_mask.affine[:3, :3] ** 2).sum(axis=0)).tolist()
+        volume.spacing    = self.image.resolution
         volume.origin     = self.image.origin
         volume.cell_data["label"] = array.flatten(order="F")
 
